@@ -1,0 +1,34 @@
+import express from "express";
+import type { Express } from "express";
+import { authRouter } from "./modules/auth/auth.routes";
+import { errorHandler } from "./middleware/erroeHandler";
+import { roleRouter } from "./modules/roles/roles.routes";
+import { organizationsRouter } from "./modules/organizations/organizations.routes";
+import { cyberViolencesRouter } from "./modules/cyberViolences/cyberViolences.routes";
+import { victimsRouter } from "./modules/victims/victims.routes";
+import { platformsReportsRouter } from "./modules/platformReports/platformReports.routes";
+import { userRouter } from "./modules/users/users.routes";
+import { validatesRouter } from "./modules/validates/validates.routes";
+import { signalementsRouter } from "./modules/signalements/signalements.routes";
+import { assignedTosRouter } from "./modules/assignedTos/assignedTos.routes";
+import { platformsRouter } from "./modules/platforms/platforms.routes";
+import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
+import { profileRouter } from "./modules/profile/profile.routes";
+
+export const app: Express = express();
+
+app.use(express.json());
+app.use("/api/auth", authRouter);
+app.use("/api/roles", roleRouter);
+app.use("/api/profile", profileRouter);
+app.use("/api/users", userRouter);
+app.use("/api/organizations", organizationsRouter);
+app.use("/api/cyberviolences", cyberViolencesRouter);
+app.use("/api/victims", victimsRouter);
+app.use("/api/platforms", platformsRouter);
+app.use("/api/signalements", signalementsRouter);
+app.use("/api/platforms-reports", platformsReportsRouter);
+app.use("/api/assigned-tos", assignedTosRouter);
+app.use("/api/validates", validatesRouter);
+app.use("/api/dashboard", dashboardRouter);
+app.use(errorHandler);

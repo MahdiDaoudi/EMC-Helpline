@@ -1,0 +1,311 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+//-----------------Enums
+enum Sex {
+  MALE
+  FEMALE
+}
+
+enum AgeGroup {
+  CHILD_5_12
+  TEEN_13_17
+  YOUNG_ADULT_18_25
+  ADULT_26_PLUS
+}
+
+enum Priority {
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum SignalementStatus {
+  PENDING
+  VALIDATED
+  REJECTED
+  IN_PROGRESS
+  CLOSED
+}
+
+enum PlatformReportStatus {
+  PENDING
+  SENT
+  PROCESSING
+  CLOSED
+  REJECTED
+}
+
+enum ValidationType {
+  TECHNICIAN
+  ADMIN
+}
+
+enum ValidationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ContentType {
+  VIDEO
+  IMAGE
+  PROFILE
+  POST
+  COMMENT
+  PAGE
+}
+
+enum AssignmentStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+enum AccompanimentType {
+  SUP
+  PSY
+  JUR
+}
+
+enum OrganizationCategory {
+  JURIDIQUE
+  PSYCHIQUE
+}
+
+enum Titulaire {
+  MOI_MEME
+  AUTRE_PERSONNE
+}
+
+//-----------------Models
+model User {
+  id              Int       @id @default(autoincrement())
+  firstName       String    @db.VarChar(20)
+  lastName        String    @db.VarChar(20)
+  email           String    @unique @db.VarChar(100)
+  profileImageUrl String?   @db.VarChar(255)
+  hashedPassword  String    @db.VarChar(255)
+  isActive        Boolean   @default(true)
+  isLocked        Boolean   @default(false)
+  lastLogin       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  validate Validate[]
+
+  roleId Int
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  organizationId Int?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+}
+
+enum RoleName {
+  SUPER_ADMIN
+  ADMIN
+  TECHNICIAN
+  ORGANIZATION_USER
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        RoleName @unique
+  description String   @db.Text
+  users       User[]
+}
+
+model Victim {
+  id              Int           @id @default(autoincrement())
+  firstName       String?       @db.VarChar(30)
+  lastName        String?       @db.VarChar(30)
+  email           String?       @db.VarChar(100)
+  telephone       String?       @db.VarChar(20)
+  sex             Sex
+  ageGroup        AgeGroup
+  city            String?       @db.VarChar(30)
+  isAnonymous     Boolean       @default(true)
+  referenceNumber String        @unique @db.VarChar(30)
+  hashedPassword  String        @db.VarChar(255)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  signalement     Signalement[]
+}
+
+model Signalement {
+  id                 Int               @id @default(autoincrement())
+  description        String?           @db.Text
+  status             SignalementStatus
+  priority           Priority
+  issuer             String            @db.VarChar(20)
+  titulaire          Titulaire         @default(MOI_MEME)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  dateAnalyse        DateTime?
+  dateApprobation    DateTime?
+  otherCyberViolence String?           @db.VarChar(100)
+
+  platforms      PlatformReport[]
+  validate       Validate[]
+  assignedTo     AssignedTo[]
+  reportedItems  ReportedItem[]
+  accompaniments SignalementAccompaniment[]
+
+  victimId Int
+  victim   Victim @relation(fields: [victimId], references: [id], onDelete: Cascade)
+
+  cyberViolenceId Int?
+  cyberViolence   CyberViolence? @relation(fields: [cyberViolenceId], references: [id], onDelete: Restrict)
+
+  @@index([status])
+  @@index([priority])
+}
+
+model SignalementAccompaniment {
+  id            Int               @id @default(autoincrement())
+  type          AccompanimentType
+  createdAt     DateTime          @default(now())
+  signalementId Int
+  signalement   Signalement       @relation(fields: [signalementId], references: [id], onDelete: Cascade)
+
+  @@unique([signalementId, type])
+  @@index([signalementId])
+}
+
+model Platform {
+  id            Int              @id @default(autoincrement())
+  name          String           @unique @db.VarChar(20)
+  email         String           @unique @db.VarChar(100)
+  icon          String?          @db.VarChar(255)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  signalements  PlatformReport[]
+  reportedItems ReportedItem[]
+}
+
+model PlatformReport {
+  status                 PlatformReportStatus
+  createdAt              DateTime             @default(now())
+  closedAt               DateTime?
+  updatedAt              DateTime             @updatedAt
+  emailSubject           String               @db.VarChar(150)
+  emailBody              String               @db.Text
+  emailTo                String               @db.VarChar(150)
+  selectedScreenshotUrls String?              @db.Text
+
+  signalement   Signalement @relation(fields: [signalementId], references: [id], onDelete: Cascade)
+  signalementId Int
+  platform      Platform    @relation(fields: [platformId], references: [id], onDelete: Restrict)
+  platformId    Int
+
+  @@id([signalementId, platformId])
+  @@index([platformId])
+  @@index([signalementId])
+}
+
+model CyberViolence {
+  id          Int           @id @default(autoincrement())
+  name        String        @unique @db.VarChar(100)
+  signalement Signalement[]
+}
+
+model Organization {
+  id          Int      @id @default(autoincrement())
+  nickname    String   @db.VarChar(20)
+  name        String   @unique @db.VarChar(100)
+  category    OrganizationCategory
+  email       String   @unique @db.VarChar(100)
+  website     String?  @db.VarChar(255)
+  description String   @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users      User[]
+  assignedTo AssignedTo[]
+}
+
+model Validate {
+  type      ValidationType
+  status    ValidationStatus
+  reason    String           @db.Text
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  signalementId Int
+  signalement   Signalement @relation(fields: [signalementId], references: [id], onDelete: Cascade)
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([signalementId, userId])
+  @@unique([type, signalementId])
+  @@index([signalementId])
+  @@index([userId])
+}
+
+model AssignedTo {
+  status      AssignmentStatus
+  reason      String?          @db.Text
+  type          AccompanimentType
+  createdAt     DateTime         @default(now())
+  processedAt   DateTime?
+  closedAt      DateTime?
+  updatedAt     DateTime         @updatedAt
+
+  signalementId Int
+  signalement   Signalement @relation(fields: [signalementId], references: [id], onDelete: Cascade)
+
+  organizationId Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@id([signalementId, organizationId, type])
+    @@index([signalementId])
+  @@index([organizationId])
+}
+
+model ReportedItem {
+  id          Int         @id @default(autoincrement())
+  description String?     @db.Text
+  contentUrl  String      @db.VarChar(255)
+  type        ContentType
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  signalementId Int
+  signalement   Signalement @relation(fields: [signalementId], references: [id], onDelete: Cascade)
+
+  platformId Int
+  platform   Platform @relation(fields: [platformId], references: [id], onDelete: Restrict)
+
+  screenshots Screenshot[]
+
+  @@index([signalementId])
+  @@index([platformId])
+}
+
+model Screenshot {
+  id          Int      @id @default(autoincrement())
+  imageUrl    String   @db.Text
+  storagePath String?  @db.VarChar(255)
+  publicId    String?  @db.VarChar(255)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reportedItemId Int
+  reportedItem   ReportedItem @relation(fields: [reportedItemId], references: [id], onDelete: Cascade)
+
+  @@index([reportedItemId])
+}
