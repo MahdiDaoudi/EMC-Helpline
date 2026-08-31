@@ -9,30 +9,18 @@ import { createUserSchema, updateUserSchema } from "./users.schema";
 export const userRouter = Router();
 
 userRouter.use(authenticate());
-userRouter.get(
-  "/",
-  authorize(RoleName.ADMIN, RoleName.SUPER_ADMIN, RoleName.TECHNICIAN),
-  userController.getUsers,
-);
-userRouter.get(
-  "/:id",
-  authorize(RoleName.ADMIN, RoleName.SUPER_ADMIN, RoleName.TECHNICIAN),
-  userController.getUser,
-);
+userRouter.use(authorize(RoleName.SUPER_ADMIN));
+
+userRouter.get("/", userController.getUsers);
+userRouter.get("/:id", userController.getUser);
 userRouter.post(
   "/",
-  authorize(RoleName.ADMIN, RoleName.SUPER_ADMIN),
   validate(createUserSchema),
   userController.createUser,
 );
 userRouter.patch(
   "/:id",
-  authorize(RoleName.ADMIN, RoleName.SUPER_ADMIN),
   validate(updateUserSchema),
   userController.updateUser,
 );
-userRouter.delete(
-  "/:id",
-  authorize(RoleName.ADMIN, RoleName.SUPER_ADMIN),
-  userController.deleteUser,
-);
+userRouter.delete("/:id", userController.deleteUser);

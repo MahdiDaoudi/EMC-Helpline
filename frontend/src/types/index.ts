@@ -31,7 +31,9 @@ export type AssignmentStatus =
   | "PENDING"
   | "ASSIGNED"
   | "IN_PROGRESS"
+  | "ON_HOLD"
   | "COMPLETED"
+  | "CLOSED"
   | "REJECTED";
 export type RoleName =
   | "SUPER_ADMIN"
@@ -47,6 +49,9 @@ export interface Role {
   id: number;
   name: RoleName;
   description: string;
+  _count?: {
+    users: number;
+  };
 }
 
 export interface User {
@@ -82,6 +87,7 @@ export interface Victim {
   _count?: {
     signalement: number;
   };
+  signalement?: Signalement[];
 }
 
 export interface CyberViolence {
@@ -119,6 +125,7 @@ export interface Organization {
   email: string;
   website?: string | null;
   description: string;
+  image?: string | null;
   createdAt: string;
   userCount?: number;
 }
@@ -142,7 +149,15 @@ export interface AssignedTo {
   createdAt: string;
   processedAt?: string | null;
   closedAt?: string | null;
+  updatedAt?: string | null;
+  notes?: string | null;
+  reportActions?: string | null;
+  reportObservations?: string | null;
+  reportResult?: string | null;
+  reportRecommendations?: string | null;
+  reportUpdatedAt?: string | null;
   organization?: Organization;
+  signalement?: Signalement;
 }
 
 export interface Screenshot {
@@ -174,6 +189,8 @@ export interface Signalement {
   accompaniments?: { id: number; type: AccompanimentType; createdAt: string }[];
   createdAt: string;
   updatedAt: string;
+  dateAnalyse?: string | null;
+  dateApprobation?: string | null;
   otherCyberViolence?: string | null;
   victimId: number;
   victim?: Victim;

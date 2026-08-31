@@ -1,18 +1,10 @@
 import React, { useState } from 'react';
-import { User, Sun, Moon, Monitor, Shield, Bell, Check } from 'lucide-react';
+import { Sun, Moon, Monitor, Bell } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { useAuth } from '../context/AuthContext';
 
 export const SettingsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'appearance' | 'security' | 'notifications'>('appearance');
+  const [activeTab, setActiveTab] = useState<'appearance' | 'notifications'>('appearance');
   const { theme, setTheme } = useTheme();
-  const { user } = useAuth();
-  const [savedMessage, setSavedMessage] = useState(false);
-
-  const handleSave = () => {
-    setSavedMessage(true);
-    setTimeout(() => setSavedMessage(false), 3000);
-  };
 
   return (
     <div className="space-y-6">
@@ -21,7 +13,7 @@ export const SettingsPage: React.FC = () => {
           Paramètres de l'Application
         </h1>
         <p className="text-xs md:text-sm text-slate-500 dark:text-emc-secondary">
-          Gérez le profil de votre compte, les préférences de thème et les paramètres de sécurité.
+          Gérez vos préférences d'affichage, de thème et de notifications.
         </p>
       </div>
 
@@ -29,9 +21,6 @@ export const SettingsPage: React.FC = () => {
       <div className="flex border-b border-slate-200 dark:border-emc-border gap-6 text-xs font-semibold overflow-x-auto">
         {[
           { id: 'appearance', label: 'Apparence & Thème', icon: Sun },
-          { id: 'profile', label: 'Informations du Profil', icon: User },
-          { id: 'security', label: 'Sécurité & Mot de passe', icon: Shield },
-          { id: 'notifications', label: 'Notifications d\'Alerte', icon: Bell },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -51,12 +40,6 @@ export const SettingsPage: React.FC = () => {
           );
         })}
       </div>
-
-      {savedMessage && (
-        <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs flex items-center gap-2">
-          <Check className="w-4 h-4" /> Paramètres mis à jour avec succès !
-        </div>
-      )}
 
       {/* Tab Contents */}
       {activeTab === 'appearance' && (
@@ -97,94 +80,6 @@ export const SettingsPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {activeTab === 'profile' && (
-        <div className="emc-card p-6 space-y-4 max-w-2xl text-xs">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-emc-primary">Détails du Profil</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-slate-500 mb-1">Prénom</label>
-              <input
-                type="text"
-                defaultValue={user?.firstName || 'Sarah'}
-                className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-emc-elevated border border-slate-200 dark:border-emc-border-strong"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-500 mb-1">Nom</label>
-              <input
-                type="text"
-                defaultValue={user?.lastName || 'Alami'}
-                className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-emc-elevated border border-slate-200 dark:border-emc-border-strong"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-slate-500 mb-1">Adresse E-mail Officielle</label>
-            <input
-              type="email"
-              defaultValue={user?.email || 's.alami@emc-helpline.org'}
-              className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-emc-elevated border border-slate-200 dark:border-emc-border-strong"
-            />
-          </div>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-semibold shadow-sm"
-          >
-            Enregistrer les modifications
-          </button>
-        </div>
-      )}
-
-      {activeTab === 'security' && (
-        <div className="emc-card p-6 space-y-4 max-w-2xl text-xs">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-emc-primary">Changer le Mot de passe</h3>
-          <div>
-            <label className="block text-slate-500 mb-1">Mot de passe actuel</label>
-            <input
-              type="password"
-              placeholder="••••••••••••"
-              className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-emc-elevated border border-slate-200 dark:border-emc-border-strong"
-            />
-          </div>
-          <div>
-            <label className="block text-slate-500 mb-1">Nouveau mot de passe</label>
-            <input
-              type="password"
-              placeholder="••••••••••••"
-              className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-emc-elevated border border-slate-200 dark:border-emc-border-strong"
-            />
-          </div>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 font-semibold shadow-sm"
-          >
-            Mettre à jour les identifiants
-          </button>
-        </div>
-      )}
-
-      {activeTab === 'notifications' && (
-        <div className="emc-card p-6 space-y-4 max-w-2xl text-xs">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-emc-primary">Préférences de Notification</h3>
-          <div className="space-y-3">
-            {[
-              { title: 'Alertes de cas urgents', desc: 'Notifications par e-mail et toast pour les cas entrants à haute priorité' },
-              { title: 'Mises à jour des suppressions', desc: 'Alertes lorsque les réseaux sociaux répondent aux demandes de retrait' },
-              { title: 'Revues de validation', desc: 'Notifications lorsqu\'une validation technicien nécessite une signature' },
-            ].map((n, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-emc-elevated/60">
-                <div>
-                  <h4 className="font-bold text-slate-900 dark:text-emc-primary">{n.title}</h4>
-                  <p className="text-[11px] text-slate-500">{n.desc}</p>
-                </div>
-                <input type="checkbox" defaultChecked className="w-4 h-4 accent-blue-600" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
-

@@ -3,7 +3,7 @@ import { z } from "zod";
 export const createPlatformSchema = z.object({
   name: z.string().trim(),
   email: z.email().trim(),
-  icon: z.string().trim().max(255).optional().nullable(),
+  icon: z.string().trim().nullable().optional(),
 });
 
 export const updatePlatformSchema = createPlatformSchema.partial();

@@ -2,11 +2,15 @@ import { z } from "zod";
 import { PlatformReportStatus } from "../../generated/prisma/enums";
 
 export const createPlatformReportSchema = z.object({
-  emailSubject: z.string().trim().min(5),
-  emailBody: z.string().trim().min(10),
+  emailSubject: z.string().trim().min(2),
+  emailBody: z.string().trim().min(5),
   emailTo: z.string().trim().email().min(5),
   selectedScreenshotUrls: z
-    .array(z.string().trim().url())
+    .array(z.string().trim())
+    .optional()
+    .default([]),
+  selectedLinks: z
+    .array(z.string().trim())
     .optional()
     .default([]),
   signalementId: z.number().positive(),

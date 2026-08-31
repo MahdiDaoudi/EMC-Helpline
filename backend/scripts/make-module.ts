@@ -4,20 +4,16 @@ const path = require("path");
 const moduleName = process.argv[2];
 
 if (!moduleName) {
-  console.log("Usage: npm run make <module-name>");
   process.exit(1);
 }
 
 if (!moduleName.endsWith("s")) {
-  console.log("Module name must be plural.");
-  console.log("Example: users, products, orders");
   process.exit(1);
 }
 
 const moduleDir = path.join(__dirname, "..", "src", "modules", moduleName);
 
 if (fs.existsSync(moduleDir)) {
-  console.log(`Module "${moduleName}" already exists.`);
   process.exit(1);
 }
 
@@ -143,5 +139,3 @@ const templates: Record<string, string> = {
 for (const [file,content] of Object.entries(templates)) {
   fs.writeFileSync(path.join(moduleDir, file),content );
 }
-
-console.log(`Module "${moduleName}" created successfully.`);

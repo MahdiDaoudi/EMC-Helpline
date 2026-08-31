@@ -5,25 +5,28 @@ export function validate(schema: ZodTypeAny) {
   return (req: Request, res: Response, next: NextFunction) => {
     let body = req.body ?? {};
 
-    if (
-      body &&
-      typeof body === "object" &&
-      typeof (body as any).data === "string"
-    ) {
-      try {
-        body = JSON.parse((body as any).data);
-      } catch {
-        return res.status(400).json({
-          message: "Invalid JSON data",
-        });
+    if (body && typeof body === "object") {
+      const rawString =
+        typeof (body as any).data === "string"
+          ? (body as any).data
+          : typeof (body as any).payload === "string"
+          ? (body as any).payload
+          : null;
+
+      if (rawString) {
+        try {
+          body = JSON.parse(rawString);
+        } catch {
+          return res.status(400).json({
+            message: "Invalid JSON data",
+          });
+        }
       }
     }
 
     if (!body || typeof body !== "object") {
       body = {};
     }
-
-    console.log("VALIDATION BODY:", body);
 
     const result = schema.safeParse(body);
 

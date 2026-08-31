@@ -7,6 +7,7 @@
     "make": "tsx ./scripts/make-module.ts",
     "dev": "tsx watch src/index.ts",
     "seed": "tsx prisma/seed.ts",
+    "email": "tsx ./src/modules/email/email.service.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -22,7 +23,7 @@
     "jsonwebtoken": "^9.0.3",
     "mariadb": "^3.5.3",
     "multer": "^2.2.0",
-    "nodemailer": "^7.0.0",
+    "nodemailer": "^7.0.13",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
     "zod": "^4.4.3"

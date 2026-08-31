@@ -1,5 +1,6 @@
 import React from 'react';
 import { Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Step {
   number: number;
@@ -20,6 +21,8 @@ export const FormStepper: React.FC<FormStepperProps> = ({
   steps,
   onStepClick,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="w-full">
       {/* Desktop stepper */}
@@ -29,7 +32,7 @@ export const FormStepper: React.FC<FormStepperProps> = ({
 
         {/* Connecting active progress line */}
         <div
-          className="absolute top-5 left-8 h-1 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 rounded-full z-0 transition-all duration-500"
+          className="absolute top-5 ltr:left-8 ltr:right-auto rtl:right-8 rtl:left-auto h-1 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 rounded-full z-0 transition-all duration-500"
           style={{ width: `${((Math.min(currentStep, maxVisitedStep) - 1) / (steps.length - 1)) * 88}%` }}
         />
 
@@ -46,8 +49,8 @@ export const FormStepper: React.FC<FormStepperProps> = ({
               onClick={() => isAccessible && onStepClick(step.number)}
               title={
                 isAccessible
-                  ? `Accéder à l'Étape ${step.number} — ${step.label}`
-                  : `Étape ${step.number} non encore accessible`
+                  ? `Step ${step.number} — ${step.label}`
+                  : `Step ${step.number}`
               }
               className={`relative z-10 flex flex-col items-center gap-2 group outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 rounded-xl transition-all ${
                 isAccessible ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
@@ -96,10 +99,7 @@ export const FormStepper: React.FC<FormStepperProps> = ({
       <div className="sm:hidden flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-slate-800 dark:text-emc-primary">
-            Étape {currentStep} sur {steps.length} — {steps[currentStep - 1]?.label}
-          </span>
-          <span className="text-[10px] text-slate-400">
-            {currentStep < steps.length ? `${steps.length - currentStep} étape(s) restante(s)` : 'Dernière étape'}
+            {t('form.stepOf', { current: currentStep, total: steps.length })} — {steps[currentStep - 1]?.label}
           </span>
         </div>
 
@@ -115,7 +115,7 @@ export const FormStepper: React.FC<FormStepperProps> = ({
                 type="button"
                 disabled={!isAccessible}
                 onClick={() => isAccessible && onStepClick(step.number)}
-                title={`Aller à l'Étape ${step.number}`}
+                title={`Step ${step.number}`}
                 className={`h-2 flex-1 rounded-full transition-all duration-300 ${
                   isActive
                     ? 'bg-blue-600 dark:bg-blue-500 ring-2 ring-blue-300 dark:ring-blue-700'

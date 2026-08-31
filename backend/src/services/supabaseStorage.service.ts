@@ -92,13 +92,6 @@ export async function uploadScreenshotToSupabase(
   const storagePath = `signalements/${signalementId}/${randomUUID()}${getFileExtension(file.mimetype)}`;
   const startedAt = Date.now();
 
-  console.log("[PERF] SUPABASE UPLOAD START", {
-    filename: file.originalname,
-    mimetype: file.mimetype,
-    size: file.size,
-    storagePath,
-    index,
-  });
 
   try {
     const { data, error } = await supabase!.storage
@@ -117,13 +110,6 @@ export async function uploadScreenshotToSupabase(
     }
 
     const duration = Date.now() - startedAt;
-    console.log("[PERF] SUPABASE UPLOAD END:", duration, "ms");
-    console.log("[SUPABASE] Upload success", {
-      filename: file.originalname,
-      size: file.size,
-      storagePath,
-      duration,
-    });
 
     const signedUrl = await createSignedUrl(storagePath);
     const persistedReference = `supabase://${env.supabaseBucket}/${storagePath}`;
@@ -186,10 +172,6 @@ export async function uploadPlatformIcon(file: Express.Multer.File) {
     const signedUrl = await createSignedUrl(storagePath);
     const persistedReference = `supabase://${env.supabaseBucket}/${storagePath}`;
 
-    console.log("[SUPABASE] Platform icon uploaded", {
-      storagePath,
-      size: file.size,
-    });
 
     return {
       storagePath,
@@ -202,4 +184,48 @@ export async function uploadPlatformIcon(file: Express.Multer.File) {
     });
     throw error;
   }
+}
+
+export async function uploadGenericImage(file: Express.Multer.File, folder: string) {
+  validateScreenshotFile(file);
+  ensureSupabaseConfigured();
+
+  const storagePath = `${folder}/${randomUUID()}${getFileExtension(file.mimetype)}`;
+
+  try {
+    const { data, error } = await supabase!.storage
+      .from(env.supabaseBucket)
+      .upload(storagePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+        cacheControl: "3600",
+      });
+
+    if (error || !data?.path) {
+      throw new ApiError(
+        500,
+        `Le téléchargement de l'image a échoué: ${error?.message ?? "erreur inconnue"}`,
+      );
+    }
+
+    const signedUrl = await createSignedUrl(storagePath);
+    const persistedReference = `supabase://${env.supabaseBucket}/${storagePath}`;
+
+    return {
+      storagePath,
+      imageUrl: signedUrl ?? persistedReference,
+      persistedReference,
+    };
+  } catch (error) {
+    console.error(`[SUPABASE] uploadGenericImage (${folder}) error`, error);
+    throw error;
+  }
+}
+
+export async function uploadOrganizationLogo(file: Express.Multer.File) {
+  return uploadGenericImage(file, "organizations");
+}
+
+export async function uploadProfileAvatar(file: Express.Multer.File) {
+  return uploadGenericImage(file, "profiles");
 }

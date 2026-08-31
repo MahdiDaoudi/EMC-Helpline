@@ -38,10 +38,10 @@ export const createSignalementSchema = z
   })
   .refine(
     (data) => {
-      return Boolean(data.victim) !== Boolean(data.victimId);
+      return !(Boolean(data.victim) && Boolean(data.victimId));
     },
     {
-      message: "Provide either victimId or victim.",
+      message: "Provide either victimId or victim, not both.",
     },
   );
 
@@ -51,6 +51,8 @@ export const updateSignalementSchema = z.object({
   accompanimentTypes: z.array(z.enum(AccompanimentType)).optional(),
   status: z.enum(SignalementStatus).optional(),
   priority: z.enum(Priority).optional(),
+  dateAnalyse: z.string().datetime({ offset: true }).nullable().optional(),
+  reason: z.string().trim().optional(),
 });
 
 export type CreateSignalementDto = z.infer<typeof createSignalementSchema>;

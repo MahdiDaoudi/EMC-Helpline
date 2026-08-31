@@ -8,6 +8,5 @@ async function main() {
       }
     }
   });
-  console.log(JSON.stringify(platforms, null, 2));
 }
 main().catch(console.error).finally(() => prisma.$disconnect());

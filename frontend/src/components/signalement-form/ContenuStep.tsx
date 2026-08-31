@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Plus, FileWarning } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { FormField, inputCls } from "./FormField";
 import { CustomSelect } from "./CustomSelect";
 import { PlatformEntry } from "./PlatformEntry";
@@ -47,6 +48,7 @@ export const ContenuStep: React.FC<ContenuStepProps> = ({
   onAddPlatform,
   onRemovePlatform,
 }) => {
+  const { t } = useTranslation();
   const [cyberViolences, setCyberViolences] = useState<CyberViolence[]>([]);
   const [loadingCyberViolences, setLoadingCyberViolences] = useState(true);
   const [platforms, setPlatforms] = useState<Platforme[]>([]);
@@ -98,37 +100,27 @@ export const ContenuStep: React.FC<ContenuStepProps> = ({
 
   // Build screenshot previews whenever screenshots change
   useEffect(() => {
-    data.platforms.forEach((entry) => {
-      const previews: string[] = [];
-      let loaded = 0;
-      if (entry.screenshots.length === 0) {
-        onChange(
-          "platforms",
-          data.platforms.map((p) =>
-            p.id === entry.id ? { ...p, screenshotPreviews: [] } : p,
-          ),
-        );
-        return;
+    const newPreviews = data.platforms.map((p) =>
+      p.screenshots.map((file) =>
+        file instanceof File ? URL.createObjectURL(file) : "",
+      ),
+    );
+
+    // Update previews if different
+    data.platforms.forEach((p, idx) => {
+      const prevs = newPreviews[idx] || [];
+      if (JSON.stringify(p.screenshotPreviews) !== JSON.stringify(prevs)) {
+        onPlatformChange(p.id, "screenshotPreviews" as any, prevs as any);
       }
-      entry.screenshots.forEach((file, idx) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          previews[idx] = e.target?.result as string;
-          loaded++;
-          if (loaded === entry.screenshots.length) {
-            onChange(
-              "platforms",
-              data.platforms.map((p) =>
-                p.id === entry.id ? { ...p, screenshotPreviews: previews } : p,
-              ),
-            );
-          }
-        };
-        reader.readAsDataURL(file);
-      });
     });
+
+    return () => {
+      newPreviews.flat().forEach((url) => {
+        if (url) URL.revokeObjectURL(url);
+      });
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.platforms.map((p) => p.screenshots.length).join(",")]);
+  }, [data.platforms.map((p) => p.screenshots).flat().length]);
 
   return (
     <div className="space-y-8">
@@ -139,22 +131,18 @@ export const ContenuStep: React.FC<ContenuStepProps> = ({
         </div>
         <div>
           <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-            Décrivez les faits signalés
+            {t("form.contenu.bannerTitle")}
           </p>
           <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-0.5">
-            Plus votre description est précise, plus nous pourrons traiter votre
-            demande efficacement. Ne partagez que les informations nécessaires.
+            {t("form.contenu.bannerSubtitle")}
           </p>
         </div>
       </div>
 
       {/* Violence type custom select */}
       <div className="space-y-4">
-        <h3 className="text-sm font-bold text-slate-800 dark:text-emc-primary uppercase tracking-wide">
-          Type de cyberviolence
-        </h3>
         <FormField
-          label="Type de cyberviolence"
+          label={t("form.contenu.violenceTypeTitle")}
           required
           error={errors.violenceType}
           htmlFor="violenceType"
@@ -166,8 +154,8 @@ export const ContenuStep: React.FC<ContenuStepProps> = ({
             onChange={(val) => onChange("violenceType", val)}
             placeholder={
               loadingCyberViolences
-                ? "Chargement..."
-                : "Sélectionnez un type de cyberviolence"
+                ? "..."
+                : t("form.contenu.selectViolenceType")
             }
             error={!!errors.violenceType}
             searchable
@@ -176,7 +164,7 @@ export const ContenuStep: React.FC<ContenuStepProps> = ({
 
         {data.violenceType === "OTHER" && (
           <FormField
-            label="Précisez le type de cyberviolence"
+            label={t("form.contenu.otherViolenceType")}
             required
             error={errors.violenceTypeOther}
             htmlFor="violenceTypeOther"
@@ -184,7 +172,7 @@ export const ContenuStep: React.FC<ContenuStepProps> = ({
             <input
               id="violenceTypeOther"
               type="text"
-              placeholder="Décrivez brièvement le type de cyberviolence..."
+              placeholder={t("form.contenu.otherViolenceType")}
               value={data.violenceTypeOther || ""}
               onChange={(e) => onChange("violenceTypeOther", e.target.value)}
               className={inputCls(!!errors.violenceTypeOther)}
@@ -195,19 +183,15 @@ export const ContenuStep: React.FC<ContenuStepProps> = ({
 
       {/* Description */}
       <div className="space-y-4">
-        <h3 className="text-sm font-bold text-slate-800 dark:text-emc-primary uppercase tracking-wide">
-          Description des faits
-        </h3>
         <FormField
-          label="Décrivez les faits"
+          label={t("form.contenu.descriptionTitle")}
           error={errors.description}
           htmlFor="description"
-          helpText="Indiquez : quand les faits ont-ils eu lieu ? À quelle fréquence ? Comment cela a-t-il commencé ? Quelles en sont les conséquences ?"
         >
           <textarea
             id="description"
             rows={5}
-            placeholder="Décrivez les faits de manière détaillée : dates, contexte, fréquence, impact..."
+            placeholder={t("form.contenu.descriptionPlaceholder")}
             value={data.description}
             onChange={(e) => onChange("description", e.target.value)}
             className={`${inputCls(!!errors.description)} resize-none`}
@@ -219,18 +203,12 @@ export const ContenuStep: React.FC<ContenuStepProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-800 dark:text-emc-primary uppercase tracking-wide">
-            Plateformes et contenus signalés
+            {t("form.contenu.platformsTitle")}
           </h3>
           <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-200/80 dark:bg-emc-surface-hover text-slate-700 dark:text-emc-secondary">
-            {data.platforms.length} / 5 plateforme
-            {data.platforms.length > 1 ? "s" : ""}
+            {data.platforms.length} / 5
           </span>
         </div>
-
-        <p className="text-xs text-slate-500 dark:text-emc-secondary">
-          Ajoutez au moins une plateforme où le contenu signalé est visible.
-          Vous pouvez en ajouter jusqu'à 5.
-        </p>
 
         <div className="space-y-4">
           {data.platforms.map((entry, index) => (
@@ -255,13 +233,13 @@ export const ContenuStep: React.FC<ContenuStepProps> = ({
             className="flex items-center gap-2 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 px-4 py-2.5 rounded-xl border-2 border-dashed border-blue-200 dark:border-blue-800/50 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all w-full justify-center"
           >
             <Plus className="w-4 h-4" />
-            Ajouter une autre plateforme
+            {t("form.contenu.addPlatformBtn")}
           </button>
         )}
 
         {data.platforms.length >= 5 && (
           <p className="text-center text-xs text-amber-600 dark:text-amber-400 py-2 font-medium">
-            Vous avez atteint le maximum de 5 plateformes.
+            {t("form.contenu.maxPlatformsReached")}
           </p>
         )}
       </div>

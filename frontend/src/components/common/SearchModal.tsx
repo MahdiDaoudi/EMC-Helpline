@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, X, ShieldAlert, User, Globe, ArrowRight } from 'lucide-react';
+import { Search, X, ShieldAlert, User, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SignalementsService } from '../../services/signalements.service';
 import { VictimsService } from '../../services/victims.service';
@@ -72,13 +72,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
       if (label.toLowerCase().includes(normalized)) {
         items.push({ type: 'Victim', label, link: '/victims', icon: User });
       }
-    });
-
-    items.push({
-      type: 'Platform',
-      label: 'Platform reports',
-      link: '/platform-reports',
-      icon: Globe,
     });
 
     return items;

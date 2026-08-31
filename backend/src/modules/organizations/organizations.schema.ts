@@ -15,6 +15,7 @@ export const createOrganizationSchema = z.object({
       : `https://${value}`;
   }, z.url().optional()),
   description: z.string().trim(),
+  image: z.string().trim().optional().nullable(),
 });
 
 export const updateOrganizationSchema = createOrganizationSchema.partial();

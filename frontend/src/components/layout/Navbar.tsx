@@ -29,10 +29,10 @@ function getPageName(pathname: string): string {
   if (pathname.startsWith('/signalements/')) return 'Détails du Signalement';
   if (pathname.startsWith('/signalements')) return 'Signalements';
   if (pathname.startsWith('/victims')) return 'Registre des victimes';
+  if (pathname.startsWith('/cyberviolences')) return 'Types de Cyberviolence';
   if (pathname.startsWith('/platforms') || pathname.startsWith('/admin/platforms')) return 'Plateformes';
   if (pathname.startsWith('/organizations') || pathname.startsWith('/admin/organizations')) return 'Organisations';
-  if (pathname.startsWith('/assignments')) return 'Assignations';
-  if (pathname.startsWith('/validates')) return 'Validations';
+  if (pathname.startsWith('/assignments')) return 'Affectations';
   if (pathname.startsWith('/users') || pathname.startsWith('/admin/users')) return 'Utilisateurs';
   if (pathname.startsWith('/roles')) return 'Rôles';
   if (pathname.startsWith('/profile')) return 'Profil';
@@ -51,6 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const location = useLocation();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
 
   const pageName = getPageName(location.pathname);
 
@@ -171,9 +172,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center gap-2.5 p-1 pl-1.5 pr-2.5 rounded-full bg-slate-100 dark:bg-emc-elevated hover:bg-slate-200 dark:hover:bg-emc-surface-hover transition-colors text-left"
           >
             <div className="relative flex-shrink-0">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-2xs">
-                {user?.firstName?.[0] || 'K'}
-              </div>
+              {user?.profileImageUrl && !avatarError ? (
+                <img
+                  src={user.profileImageUrl}
+                  alt={`${user.firstName} ${user.lastName}`}
+                  onError={() => setAvatarError(true)}
+                  className="w-7 h-7 rounded-full object-cover shadow-2xs"
+                />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-2xs">
+                  {user?.firstName?.[0] || 'U'}
+                </div>
+              )}
               <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 border-2 border-white dark:border-emc-sidebar rounded-full" />
             </div>
 

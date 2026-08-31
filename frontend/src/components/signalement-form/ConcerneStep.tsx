@@ -1,5 +1,6 @@
 import React from 'react';
 import { User, Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { FormField } from './FormField';
 import { CustomSelect } from './CustomSelect';
 import type { SignalementFormData } from './SignalementForm';
@@ -10,37 +11,21 @@ interface ConcerneStepProps {
   onChange: (field: keyof SignalementFormData['concerne'], value: string) => void;
 }
 
-const AGE_GROUPS = [
-  {
-    label: '5 - 12 ans',
-    value: 'CHILD_5_12',
-  },
-  {
-    label: '13 – 17 ans',
-    value: 'TEEN_13_17',
-  },
-  {
-    label: '18 – 25 ans',
-    value: 'YOUNG_ADULT_18_25',
-  },
-  {
-    label: 'Plus de 26 ans',
-    value: 'ADULT_26_PLUS',
-  },
-];
-
-const SEXES = [
-  {
-    label: 'Féminin',
-    value: 'FEMALE',
-  },
-  {
-    label: 'Masculin',
-    value: 'MALE',
-  },
-];
-
 export const ConcerneStep: React.FC<ConcerneStepProps> = ({ data, errors, onChange }) => {
+  const { t } = useTranslation();
+
+  const ageGroups = [
+    { label: t('form.concerne.ageOptions.child'), value: 'CHILD_5_12' },
+    { label: t('form.concerne.ageOptions.teen'), value: 'TEEN_13_17' },
+    { label: t('form.concerne.ageOptions.youngAdult'), value: 'YOUNG_ADULT_18_25' },
+    { label: t('form.concerne.ageOptions.adult'), value: 'ADULT_26_PLUS' },
+  ];
+
+  const sexes = [
+    { label: t('form.concerne.sexMale'), value: 'MALE' },
+    { label: t('form.concerne.sexFemale'), value: 'FEMALE' },
+  ];
+
   return (
     <div className="space-y-8">
       {/* Context banner */}
@@ -49,9 +34,9 @@ export const ConcerneStep: React.FC<ConcerneStepProps> = ({ data, errors, onChan
           <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Qui est concerné par ce signalement ?</p>
+          <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">{t('form.concerne.questionTitle')}</p>
           <p className="text-xs text-blue-600/80 dark:text-blue-400/80 mt-0.5">
-            Ces informations nous permettent de mieux orienter votre demande. Toutes les données sont traitées de façon confidentielle.
+            {t('form.confidentialNotice')}
           </p>
         </div>
       </div>
@@ -59,18 +44,18 @@ export const ConcerneStep: React.FC<ConcerneStepProps> = ({ data, errors, onChan
       {/* Concerné radio */}
       <div className="space-y-3">
         <p className="text-sm font-semibold text-slate-800 dark:text-emc-primary">
-          Le signalement vous concerne-t-il ? <span className="text-rose-500">*</span>
+          {t('form.concerne.questionTitle')} <span className="text-rose-500">*</span>
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
-            { value: 'moi', label: 'Moi', sublabel: 'Ce signalement me concerne directement.', Icon: User },
-            { value: 'autre', label: 'Une autre personne', sublabel: 'Je signale au nom d\'une autre personne.', Icon: Users },
+            { value: 'moi', label: t('form.concerne.myself'), sublabel: t('form.concerne.myselfSub'), Icon: User },
+            { value: 'autre', label: t('form.concerne.another'), sublabel: t('form.concerne.anotherSub'), Icon: Users },
           ].map(({ value, label, sublabel, Icon }) => (
             <button
               key={value}
               type="button"
               onClick={() => onChange('concernePour', value)}
-              className={`relative flex items-start gap-3 p-4 rounded-2xl border-2 text-left transition-all cursor-pointer ${
+              className={`relative flex items-start gap-3 p-4 rounded-2xl border-2 text-left rtl:text-right transition-all cursor-pointer ${
                 data.concernePour === value
                   ? 'border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 dark:border-blue-500 ring-2 ring-blue-500/20'
                   : 'border-slate-200 dark:border-emc-border-strong bg-white dark:bg-emc-elevated/40 hover:border-slate-300 dark:hover:border-slate-600'
@@ -90,7 +75,7 @@ export const ConcerneStep: React.FC<ConcerneStepProps> = ({ data, errors, onChan
                 <p className="text-xs text-slate-500 dark:text-emc-secondary mt-0.5 leading-relaxed">{sublabel}</p>
               </div>
               {data.concernePour === value && (
-                <div className="absolute top-3 right-3 w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center">
+                <div className="absolute top-3 ltr:right-3 rtl:left-3 w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center">
                   <div className="w-1.5 h-1.5 rounded-full bg-white" />
                 </div>
               )}
@@ -105,35 +90,33 @@ export const ConcerneStep: React.FC<ConcerneStepProps> = ({ data, errors, onChan
       {/* Age group & Sex custom selects */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <FormField
-          label="Tranche d'âge"
+          label={t('form.concerne.ageTitle')}
           required
           error={errors.ageGroup}
           htmlFor="ageGroup"
-          helpText="Indiquez la tranche d'âge de la personne concernée par le signalement."
         >
           <CustomSelect
             id="ageGroup"
-            options={AGE_GROUPS}
+            options={ageGroups}
             value={data.ageGroup}
             onChange={(val) => onChange('ageGroup', val)}
-            placeholder="Sélectionnez une tranche d'âge"
+            placeholder={t('form.concerne.ageTitle')}
             error={!!errors.ageGroup}
           />
         </FormField>
 
         <FormField
-          label="Sexe"
+          label={t('form.concerne.sexTitle')}
           required
           error={errors.sexe}
           htmlFor="sexe"
-          helpText="Indiquez le sexe de la personne concernée par le signalement."
         >
           <CustomSelect
             id="sexe"
-            options={SEXES}
+            options={sexes}
             value={data.sexe}
             onChange={(val) => onChange('sexe', val)}
-            placeholder="Sélectionnez un sexe"
+            placeholder={t('form.concerne.sexTitle')}
             error={!!errors.sexe}
           />
         </FormField>

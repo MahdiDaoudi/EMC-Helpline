@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, CheckCircle2, RefreshCw, Loader2 } from 'lucide-react';
+import { resetPassword } from '../../services/auth.service'
 
 export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -8,6 +9,8 @@ export const ForgotPasswordPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [message, setMessage] = useState('');
+  const [requestError, setRequestError] = useState('');
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
@@ -17,7 +20,22 @@ export const ForgotPasswordPage: React.FC = () => {
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const requestReset = async () => {
+    setLoading(true);
+    setRequestError('');
+    try {
+      const data = await resetPassword(email);
+      setMessage(data?.message ?? 'Si un compte existe, vous recevrez sous peu les instructions de réinitialisation.');
+      setSubmitted(true);
+      setCooldown(30);
+    } catch (err) {
+      setRequestError("Une erreur est survenue lors de l'envoi. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setEmailError('');
 
@@ -30,21 +48,12 @@ export const ForgotPasswordPage: React.FC = () => {
       return;
     }
 
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSubmitted(true);
-      setCooldown(30);
-    }, 1000);
+    await requestReset();
   };
 
   const handleResend = () => {
-    if (cooldown > 0) return;
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setCooldown(30);
-    }, 1000);
+    if (cooldown > 0 || loading) return;
+    requestReset();
   };
 
   return (
@@ -93,6 +102,10 @@ export const ForgotPasswordPage: React.FC = () => {
               {emailError && <p className="text-xs text-rose-600 dark:text-rose-400">{emailError}</p>}
             </div>
 
+            {requestError && (
+              <p className="text-xs text-rose-600 dark:text-rose-400">{requestError}</p>
+            )}
+
             <button
               type="submit"
               disabled={loading}
@@ -120,9 +133,7 @@ export const ForgotPasswordPage: React.FC = () => {
               Vérifiez votre boîte mail
             </h2>
             <p className="text-sm text-slate-500 dark:text-emc-secondary mt-2 leading-relaxed">
-              Si un compte existe pour{' '}
-              <strong className="font-medium text-slate-900 dark:text-emc-primary">{email}</strong>,
-              vous recevrez sous peu les instructions de réinitialisation.
+              {message}
             </p>
           </div>
 

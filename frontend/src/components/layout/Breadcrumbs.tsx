@@ -3,15 +3,15 @@ import { ChevronRight, Home } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const routeLabels: Record<string, string> = {
+  analyse: 'Analyse',
   signalements: 'Signalements',
-  victims: 'victims',
+  victims: 'Victimes',
   platforms: 'Plateformes',
-  'platform-reports': 'Rapports plateformes',
   assignments: 'Affectations',
-  validates: 'Validations',
   organizations: 'Organisations',
   users: 'Utilisateurs',
   roles: 'Rôles',
+  profile: 'Mon profil',
   settings: 'Paramètres',
 };
 

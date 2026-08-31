@@ -2,6 +2,7 @@ import { PlatformReportStatus } from "../../generated/prisma/enums";
 import { prisma } from "../../config/prisma";
 import { ApiError } from "../../utils/ApiError";
 import { sendPlatformReportEmail } from "../../services/email.service";
+import { createSignedUrl } from "../../services/supabaseStorage.service";
 import * as platformReportsRepository from "./platformReports.repository";
 import {
   CreatePlatformReportDto,
@@ -55,25 +56,41 @@ async function resolveScreenshotAttachment(url: string, index: number) {
     };
   }
 
-  const response = await fetch(trimmed);
-  if (!response.ok) {
-    return null;
+  let fetchUrl = trimmed;
+  if (trimmed.startsWith("supabase://")) {
+    const path = trimmed.replace(/^supabase:\/\/[^\/]+\//, "");
+    const signed = await createSignedUrl(path);
+    if (signed) fetchUrl = signed;
+  } else if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+    const signed = await createSignedUrl(trimmed);
+    if (signed) fetchUrl = signed;
   }
 
-  const contentType = response.headers.get("content-type") || "image/png";
-  const buffer = Buffer.from(await response.arrayBuffer());
+  try {
+    const response = await fetch(fetchUrl);
+    if (!response.ok) {
+      console.error("[REPORT EMAIL] Failed to fetch screenshot:", fetchUrl, response.statusText);
+      return null;
+    }
 
-  const extension = contentType.includes("jpeg")
-    ? ".jpg"
-    : contentType.includes("png")
-      ? ".png"
-      : ".bin";
+    const contentType = response.headers.get("content-type") || "image/png";
+    const buffer = Buffer.from(await response.arrayBuffer());
 
-  return {
-    filename: `screenshot-${index + 1}${extension}`,
-    content: buffer,
-    contentType,
-  };
+    const extension = contentType.includes("jpeg")
+      ? ".jpg"
+      : contentType.includes("png")
+        ? ".png"
+        : ".bin";
+
+    return {
+      filename: `screenshot-${index + 1}${extension}`,
+      content: buffer,
+      contentType,
+    };
+  } catch (err) {
+    console.error("[REPORT EMAIL] Exception fetching screenshot:", fetchUrl, err);
+    return null;
+  }
 }
 
 export async function addPlatformReport(data: CreatePlatformReportDto) {
@@ -114,24 +131,6 @@ export async function addPlatformReport(data: CreatePlatformReportDto) {
     );
   }
 
-  const allowedUrls = new Set(
-    signalement.reportedItems
-      .filter((item) => item.platformId === data.platformId)
-      .flatMap((item) =>
-        item.screenshots.map((screenshot) => screenshot.imageUrl),
-      ),
-  );
-
-  const invalidScreenshotUrls = (data.selectedScreenshotUrls ?? []).filter(
-    (url) => !allowedUrls.has(url),
-  );
-  if (invalidScreenshotUrls.length > 0) {
-    throw new ApiError(
-      400,
-      "Selected screenshots do not belong to the current signalement/platform.",
-    );
-  }
-
   const safeEmailTo = platform.email;
   const record = await platformReportsRepository.create(
     {
@@ -153,11 +152,36 @@ export async function addPlatformReport(data: CreatePlatformReportDto) {
         Boolean(attachment),
     );
 
+    const links = (data.selectedLinks ?? []).filter((l) => l?.trim());
+    let linksHtml = "";
+    let linksText = "";
+
+    if (links.length > 0) {
+      linksHtml = `
+        <div style="margin-top: 20px; padding: 16px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <h4 style="margin: 0 0 10px 0; color: #1e293b; font-size: 14px;">Lien(s) du contenu signalé :</h4>
+          <ul style="margin: 0; padding-left: 20px;">
+            ${links.map((link) => `<li style="margin-bottom: 4px;"><a href="${escapeHtml(link)}" target="_blank" style="color: #2563eb; text-decoration: underline;">${escapeHtml(link)}</a></li>`).join("")}
+          </ul>
+        </div>
+      `;
+      linksText = `\n\nLien(s) du contenu signalé :\n${links.map((l) => `- ${l}`).join("\n")}`;
+    }
+
+    const htmlBody = `
+      <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; color: #334155; line-height: 1.6; max-width: 600px;">
+        <p style="margin-top: 0;">${escapeHtml(data.emailBody).replace(/\n/g, "<br />")}</p>
+        ${linksHtml}
+      </div>
+    `;
+
+    const textBody = `${data.emailBody}${linksText}`;
+
     const mailResult = await sendPlatformReportEmail({
       to: safeEmailTo,
       subject: data.emailSubject,
-      html: `<p>${escapeHtml(data.emailBody).replace(/\n/g, "<br />")}</p>`,
-      text: data.emailBody,
+      html: htmlBody,
+      text: textBody,
       attachments: filteredAttachments,
     });
 

@@ -93,6 +93,8 @@ export interface UpdateSignalementDto {
   description?: string;
   status?: "PENDING" | "VALIDATED" | "REJECTED" | "IN_PROGRESS" | "CLOSED";
   priority?: "NORMAL" | "HIGH" | "URGENT";
+  dateAnalyse?: string | null;
+  reason?: string;
 }
 
 export interface GetSignalementsParams {
@@ -130,7 +132,7 @@ export const SignalementsService = {
   ): Promise<SignalementSuccessResponse> {
     const payload = {
       ...dto,
-      reportedItems: dto.reportedItems.map((item) => ({
+      reportedItems: (dto.reportedItems || []).map((item) => ({
         ...item,
         screenshots: [],
       })),
@@ -139,23 +141,47 @@ export const SignalementsService = {
     const formData = new FormData();
     formData.append("data", JSON.stringify(payload));
 
-    filesByReportedItem.forEach((files, index) => {
-      files.forEach((file) => {
-        if (!(file instanceof File)) return;
-
-        console.log("FORMDATA FILE:", {
-          key: `screenshots[${index}]`,
-          name: file.name,
-          type: file.type,
-          size: file.size,
-        });
-
-        formData.append(`screenshots[${index}]`, file);
+    (filesByReportedItem || []).forEach((files, index) => {
+      (files || []).forEach((file) => {
+        if (file && typeof File !== "undefined" && file instanceof File) {
+          formData.append(`screenshots[${index}]`, file);
+        }
       });
     });
 
     const { data } = await api.post<SignalementSuccessResponse>(
       "/signalements",
+      formData,
+    );
+
+    return data;
+  },
+
+  async createPublicSignalement(
+    dto: CreateSignalementDto,
+    filesByReportedItem: File[][] = [],
+  ): Promise<SignalementSuccessResponse> {
+    const payload = {
+      ...dto,
+      reportedItems: (dto.reportedItems || []).map((item) => ({
+        ...item,
+        screenshots: [],
+      })),
+    };
+
+    const formData = new FormData();
+    formData.append("data", JSON.stringify(payload));
+
+    (filesByReportedItem || []).forEach((files, index) => {
+      (files || []).forEach((file) => {
+        if (file && typeof File !== "undefined" && file instanceof File) {
+          formData.append(`screenshots[${index}]`, file);
+        }
+      });
+    });
+
+    const { data } = await api.post<SignalementSuccessResponse>(
+      "/signalements/public",
       formData,
     );
 

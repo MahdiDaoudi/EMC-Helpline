@@ -1,9 +1,15 @@
 import { prisma } from "../../config/prisma";
-import { RoleName } from "../../generated/prisma/enums";
 import { CreateRoleDto, UpdateRoleDto } from "./roles.schema";
 
 export function findAll() {
-  return prisma.role.findMany();
+  return prisma.role.findMany({
+    include: {
+      _count: {
+        select: { users: true },
+      },
+    },
+    orderBy: { id: "asc" },
+  });
 }
 
 export function findById(id: number) {
@@ -11,12 +17,22 @@ export function findById(id: number) {
     where: {
       id,
     },
+    include: {
+      _count: {
+        select: { users: true },
+      },
+    },
   });
 }
 
 export function create(data: CreateRoleDto) {
   return prisma.role.create({
     data,
+    include: {
+      _count: {
+        select: { users: true },
+      },
+    },
   });
 }
 
@@ -26,6 +42,11 @@ export function update(id: number, data: UpdateRoleDto) {
       id,
     },
     data,
+    include: {
+      _count: {
+        select: { users: true },
+      },
+    },
   });
 }
 
@@ -37,8 +58,9 @@ export function deleteById(id: number) {
   });
 }
 
-export function findByName(name: RoleName) {
+export function findByName(name: string) {
   return prisma.role.findUnique({
     where: { name },
   });
 }
+

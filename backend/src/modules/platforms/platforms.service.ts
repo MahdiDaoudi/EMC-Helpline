@@ -79,6 +79,16 @@ export async function addPlatform(data: CreatePlatformDto) {
 
 export async function updatePlatform(id: number, data: UpdatePlatformDto) {
   await requirePlatform(id);
+  
+  // If icon is passed as a full URL (signed URL or http/https), delete it from data so we never overwrite DB reference
+  if (
+    data.icon &&
+    typeof data.icon === "string" &&
+    (data.icon.startsWith("http://") || data.icon.startsWith("https://"))
+  ) {
+    delete data.icon;
+  }
+
   if (data.name) {
     const existing = await platformsRepository.findByName(data.name);
     if (existing && existing.id !== id) {
@@ -108,7 +118,8 @@ export async function updatePlatform(id: number, data: UpdatePlatformDto) {
       }
     }
 
-    return platformsRepository.update(id, data);
+    const updated = await platformsRepository.update(id, data);
+    return getPlatformById(updated.id);
   } catch (err: any) {
     if (err?.code === "P2002" && err?.meta?.target) {
       const target = String(err.meta.target);

@@ -14,29 +14,33 @@ const organizationsRouter = Router();
 organizationsRouter.use(authenticate());
 organizationsRouter.get(
   "/",
-  authorize(RoleName.ADMIN, RoleName.SUPER_ADMIN, RoleName.TECHNICIAN),
+  authorize(RoleName.SUPER_ADMIN, RoleName.ADMIN),
   organizationsController.getOrganizations,
 );
 organizationsRouter.get(
   "/:id",
-  authorize(RoleName.ADMIN, RoleName.SUPER_ADMIN, RoleName.TECHNICIAN),
+  authorize(RoleName.SUPER_ADMIN, RoleName.ADMIN),
   organizationsController.getOrganization,
 );
+import { upload } from "../../middleware/upload.middleware";
+
 organizationsRouter.post(
   "/",
-  authorize(RoleName.ADMIN, RoleName.SUPER_ADMIN),
+  authorize(RoleName.SUPER_ADMIN),
+  upload.single("image"),
   validate(createOrganizationSchema),
   organizationsController.createOrganization,
 );
 organizationsRouter.patch(
   "/:id",
-  authorize(RoleName.ADMIN, RoleName.SUPER_ADMIN),
+  authorize(RoleName.SUPER_ADMIN),
+  upload.single("image"),
   validate(updateOrganizationSchema),
   organizationsController.updateOrganization,
 );
 organizationsRouter.delete(
   "/:id",
-  authorize(RoleName.ADMIN, RoleName.SUPER_ADMIN),
+  authorize(RoleName.SUPER_ADMIN),
   organizationsController.deleteOrganization,
 );
 

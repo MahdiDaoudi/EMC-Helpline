@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pencil, User, FileWarning, Globe, HeartHandshake, CheckCircle2, Image as ImageIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { SignalementFormData } from './SignalementForm';
+import { PlatformsService } from '../../services/platforms.service';
 
 interface ReviewStepProps {
   data: SignalementFormData;
@@ -17,25 +19,28 @@ const SectionCard: React.FC<{
   icon: React.ReactNode;
   onEdit: () => void;
   children: React.ReactNode;
-}> = ({ title, icon, onEdit, children }) => (
-  <div className="border border-slate-200 dark:border-emc-border-strong rounded-2xl overflow-hidden bg-white dark:bg-emc-elevated/40 shadow-xs">
-    <div className="flex items-center justify-between px-5 py-3.5 bg-slate-50/80 dark:bg-emc-elevated/70 border-b border-slate-200 dark:border-emc-border-strong">
-      <div className="flex items-center gap-2">
-        <span className="text-blue-600 dark:text-blue-400">{icon}</span>
-        <span className="text-xs font-bold text-slate-800 dark:text-emc-primary uppercase tracking-wide">{title}</span>
+}> = ({ title, icon, onEdit, children }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="border border-slate-200 dark:border-emc-border-strong rounded-2xl overflow-hidden bg-white dark:bg-emc-elevated/40 shadow-xs">
+      <div className="flex items-center justify-between px-5 py-3.5 bg-slate-50/80 dark:bg-emc-elevated/70 border-b border-slate-200 dark:border-emc-border-strong">
+        <div className="flex items-center gap-2">
+          <span className="text-blue-600 dark:text-blue-400">{icon}</span>
+          <span className="text-xs font-bold text-slate-800 dark:text-emc-primary uppercase tracking-wide">{title}</span>
+        </div>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+          {t('common.edit')}
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={onEdit}
-        className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-      >
-        <Pencil className="w-3.5 h-3.5" />
-        Modifier
-      </button>
+      <div className="p-5 space-y-3.5">{children}</div>
     </div>
-    <div className="p-5 space-y-3.5">{children}</div>
-  </div>
-);
+  );
+};
 
 const ReviewRow: React.FC<{ label: string; value?: string | string[] }> = ({ label, value }) => (
   <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
@@ -57,7 +62,57 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   submitting,
   submitError,
 }) => {
+  const { t } = useTranslation();
   const { concerne, contenu, accompagnement } = data;
+
+  // ── Fetch platform names to resolve IDs ──
+  const [platformMap, setPlatformMap] = useState<Record<string, string>>({});
+  useEffect(() => {
+    PlatformsService.getPlatforms()
+      .then((platforms) => {
+        const map: Record<string, string> = {};
+        platforms.forEach((p) => { map[String(p.id)] = p.name; });
+        setPlatformMap(map);
+      })
+      .catch(() => {/* ignore */});
+  }, []);
+
+  // ── Generate fresh Object URLs from File objects (ContenuStep revokes its own URLs on unmount) ──
+  const [localPreviews, setLocalPreviews] = useState<string[][]>([]);
+  useEffect(() => {
+    const previews = contenu.platforms.map((p) =>
+      (p.screenshots || []).map((file) =>
+        file instanceof File ? URL.createObjectURL(file) : ''
+      )
+    );
+    setLocalPreviews(previews);
+    // Revoke on cleanup to avoid memory leaks
+    return () => {
+      previews.flat().forEach((url) => { if (url) URL.revokeObjectURL(url); });
+    };
+  // Re-run whenever the screenshots array changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contenu.platforms.map((p) => p.screenshots.length).join(',')]);
+
+  const resolvePlatformName = (id: string) => platformMap[id] || id;
+
+  const formatAgeGroup = (val: string) => {
+    switch (val) {
+      case 'CHILD_5_12': return t('form.concerne.ageOptions.child');
+      case 'TEEN_13_17': return t('form.concerne.ageOptions.teen');
+      case 'YOUNG_ADULT_18_25': return t('form.concerne.ageOptions.youngAdult');
+      case 'ADULT_26_PLUS': return t('form.concerne.ageOptions.adult');
+      default: return val;
+    }
+  };
+
+  const formatSex = (val: string) => {
+    switch (val) {
+      case 'MALE': return t('form.concerne.sexMale');
+      case 'FEMALE': return t('form.concerne.sexFemale');
+      default: return val;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -67,91 +122,104 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
           <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Vérifiez vos informations</p>
+          <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">{t('form.review.title')}</p>
           <p className="text-xs text-blue-600/80 dark:text-blue-400/80 mt-0.5">
-            Relisez attentivement les informations ci-dessous avant de soumettre votre signalement.
-            Vous pouvez modifier chaque section en cliquant sur « Modifier ».
+            {t('form.review.summaryTitle')}
           </p>
         </div>
       </div>
 
       {/* Section 1 — Concernant */}
-      <SectionCard title="Concernant" icon={<User className="w-4 h-4" />} onEdit={() => onGoToStep(1)}>
-        <ReviewRow label="Personne concernée" value={concerne.concernePour === 'moi' ? 'Oui' : 'Non'} />
-        <ReviewRow label="Tranche d'âge" value={concerne.ageGroup} />
-        <ReviewRow label="Sexe" value={concerne.sexe} />
+      <SectionCard title={t('form.steps.step1.label')} icon={<User className="w-4 h-4" />} onEdit={() => onGoToStep(1)}>
+        <ReviewRow label={t('form.concerne.questionTitle')} value={concerne.concernePour === 'moi' ? t('form.concerne.myself') : t('form.concerne.another')} />
+        <ReviewRow label={t('form.concerne.ageTitle')} value={formatAgeGroup(concerne.ageGroup)} />
+        <ReviewRow label={t('form.concerne.sexTitle')} value={formatSex(concerne.sexe)} />
       </SectionCard>
 
       {/* Section 2 — Signalement */}
-      <SectionCard title="Signalement" icon={<FileWarning className="w-4 h-4" />} onEdit={() => onGoToStep(2)}>
+      <SectionCard title={t('form.steps.step2.label')} icon={<FileWarning className="w-4 h-4" />} onEdit={() => onGoToStep(2)}>
         <ReviewRow
-          label="Type de cyberviolence"
+          label={t('form.contenu.violenceTypeTitle')}
           value={contenu.violenceType === 'OTHER' ? `Autre — ${contenu.violenceTypeOther}` : contenu.violenceType}
         />
-        <ReviewRow label="Description" value={contenu.description || 'Aucune description fournie'} />
+        <ReviewRow label={t('form.contenu.descriptionTitle')} value={contenu.description || '—'} />
       </SectionCard>
 
       {/* Section 3 — Plateformes */}
-      <SectionCard title="Plateformes et contenus" icon={<Globe className="w-4 h-4" />} onEdit={() => onGoToStep(2)}>
-        {contenu.platforms.map((p, i) => (
-          <div key={p.id} className={i > 0 ? 'pt-3 border-t border-slate-100 dark:border-emc-border-strong/60' : ''}>
-            <p className="text-xs font-bold text-slate-700 dark:text-emc-secondary uppercase tracking-wide mb-2">
-              Plateforme {i + 1}
+      <SectionCard title={t('form.contenu.platformsTitle')} icon={<Globe className="w-4 h-4" />} onEdit={() => onGoToStep(2)}>
+        {contenu.platforms.map((p: any, i: number) => {
+          const previews: string[] = localPreviews[i] || [];
+          return (
+          <div key={p.id} className={i > 0 ? 'pt-4 border-t border-slate-100 dark:border-emc-border-strong/60' : ''}>
+            <p className="text-xs font-bold text-slate-700 dark:text-emc-secondary uppercase tracking-wide mb-3">
+              {t('form.contenu.platformEntry', { index: i + 1 })}
             </p>
-            <div className="space-y-2 pl-2">
-              <ReviewRow label="Plateforme" value={p.platform} />
-              <ReviewRow label="Type de contenu" value={p.contentType} />
-              <ReviewRow label="Lien" value={p.link} />
-              <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
-                <span className="text-xs font-semibold text-slate-500 dark:text-emc-secondary min-w-[150px] uppercase tracking-wide">
-                  Captures d'écran
-                </span>
-                {p.screenshotPreviews.length > 0 ? (
-                  <div className="flex gap-2 flex-wrap">
-                    {p.screenshotPreviews.map((src, j) => (
-                      <div key={j} className="relative">
+            <div className="space-y-2.5 ps-2">
+              {/* Platform name resolved from ID */}
+              <ReviewRow label={t('form.contenu.platformsTitle')} value={resolvePlatformName(p.platform)} />
+              <ReviewRow label={t('form.contenu.selectContentType')} value={p.contentType} />
+              <ReviewRow label={t('form.contenu.contentUrlLabel')} value={p.link} />
+
+              {/* Screenshot thumbnails */}
+              {previews.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-emc-secondary uppercase tracking-wide">
+                    {t('form.contenu.screenshotsLabel')}
+                  </span>
+                  <div className="flex gap-2 flex-wrap mt-1">
+                    {previews.filter(Boolean).map((src: string, idx: number) => (
+                      <a
+                        key={idx}
+                        href={src}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group relative block w-20 h-20 rounded-xl overflow-hidden border-2 border-slate-200 dark:border-emc-border-strong hover:border-blue-400 dark:hover:border-blue-500 transition-colors shadow-sm"
+                        title={`Screenshot ${idx + 1}`}
+                      >
                         <img
                           src={src}
-                          alt={`Capture ${j + 1}`}
-                          className="w-14 h-14 object-cover rounded-lg border border-slate-200 dark:border-emc-border-strong shadow-xs"
+                          alt={`Screenshot ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                         />
-                        <span className="absolute bottom-0 right-0 bg-black/70 text-white text-[9px] font-bold rounded-tl px-1">
-                          {j + 1}
-                        </span>
-                      </div>
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-xl" />
+                      </a>
                     ))}
                   </div>
-                ) : (
-                  <span className="text-sm text-slate-400 dark:text-emc-muted-fg flex items-center gap-1">
-                    <ImageIcon className="w-3.5 h-3.5" /> Aucune capture
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold text-slate-500 dark:text-emc-secondary uppercase tracking-wide">
+                    {t('form.contenu.screenshotsLabel')}
                   </span>
-                )}
-              </div>
+                  <div className="flex items-center gap-2 text-sm text-slate-400 dark:text-emc-muted-fg italic mt-1">
+                    <ImageIcon className="w-4 h-4 flex-shrink-0" />
+                    <span>{t('form.contenu.noScreenshots', "Aucune capture d'écran")}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        ))}
+          );
+        })}
       </SectionCard>
 
       {/* Section 4 — Accompagnement */}
-      <SectionCard title="Accompagnement" icon={<HeartHandshake className="w-4 h-4" />} onEdit={() => onGoToStep(3)}>
-        <ReviewRow
-          label="Accompagnement souhaité"
-          value={accompagnement.souhaite === 'oui' ? 'Oui' : 'Non'}
-        />
+      <SectionCard title={t('form.steps.step3.label')} icon={<HeartHandshake className="w-4 h-4" />} onEdit={() => onGoToStep(3)}>
+        <ReviewRow label={t('form.accompagnement.wishTitle')} value={accompagnement.souhaite === 'oui' ? t('form.accompagnement.wishYes') : t('form.accompagnement.wishNo')} />
         {accompagnement.souhaite === 'oui' && (
           <>
-            <ReviewRow label="Prénom" value={accompagnement.prenom} />
-            <ReviewRow label="Nom" value={accompagnement.nom} />
-            <ReviewRow label="Téléphone" value={accompagnement.telephone} />
-            <ReviewRow label="Ville" value={accompagnement.ville} />
-            <ReviewRow label="E-mail" value={accompagnement.email} />
+            <ReviewRow label={t('form.accompagnement.firstName')} value={accompagnement.prenom} />
+            <ReviewRow label={t('form.accompagnement.lastName')} value={accompagnement.nom} />
+            <ReviewRow label={t('form.accompagnement.phone')} value={accompagnement.telephone} />
+            <ReviewRow label={t('form.accompagnement.email')} value={accompagnement.email} />
+            <ReviewRow label={t('form.accompagnement.city')} value={accompagnement.ville} />
             <ReviewRow
-              label="Types d'accompagnement"
-              value={((accompagnement.types as string[]) ?? []).map((t) => {
-                if (t === 'SUP') return 'Soutien social';
-                if (t === 'JUR') return 'Accompagnement juridique';
-                if (t === 'PSY') return 'Accompagnement psychologique';
-                return t;
+              label={t('form.accompagnement.typesTitle')}
+              value={((accompagnement.types as string[]) ?? []).map((tVal) => {
+                if (tVal === 'SUP') return t('form.accompagnement.typeSupport');
+                if (tVal === 'JUR') return t('form.accompagnement.typeLegal');
+                if (tVal === 'PSY') return t('form.accompagnement.typePsych');
+                return tVal;
               })}
             />
           </>
@@ -176,7 +244,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
           )}
         </button>
         <p className="text-xs font-medium text-slate-800 dark:text-emc-primary leading-relaxed cursor-pointer" onClick={() => onConfirmChange(!confirmed)}>
-          Je confirme que les informations fournies sont exactes et j'accepte l'envoi de ce signalement.{' '}
+          {t('form.review.confirmLabel')}{' '}
           <span className="text-rose-500">*</span>
         </p>
       </div>
@@ -205,16 +273,16 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
             </svg>
-            Envoi de votre signalement en cours…
+            {t('form.review.submitting')}
           </span>
         ) : (
-          'Envoyer le signalement'
+          t('form.review.submitBtn')
         )}
       </button>
 
       {!confirmed && (
         <p className="text-center text-xs text-slate-400 dark:text-emc-muted-fg">
-          Veuillez confirmer les informations avant l'envoi.
+          {t('form.review.mustConfirm')}
         </p>
       )}
     </div>

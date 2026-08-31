@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { Trash2, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { FormField, inputCls } from './FormField';
 import { CustomSelect } from './CustomSelect';
 
@@ -23,11 +24,6 @@ interface PlatformEntryProps {
   loadingPlatforms?: boolean;
 }
 
-const CONTENT_TYPES = [
-  'Publication', 'Commentaire', 'Message', 'Photo', 'Vidéo',
-  'Profil', 'Story', 'Compte', 'Groupe', 'Autre',
-];
-
 export const PlatformEntry: React.FC<PlatformEntryProps> = ({
   entry,
   index,
@@ -38,7 +34,17 @@ export const PlatformEntry: React.FC<PlatformEntryProps> = ({
   platformOptions,
   loadingPlatforms = false,
 }) => {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const contentTypes = [
+    { label: t('form.contenu.contentTypes.POST'), value: 'Publication' },
+    { label: t('form.contenu.contentTypes.COMMENT'), value: 'Commentaire' },
+    { label: t('form.contenu.contentTypes.IMAGE'), value: 'Photo' },
+    { label: t('form.contenu.contentTypes.VIDEO'), value: 'Vidéo' },
+    { label: t('form.contenu.contentTypes.PROFILE'), value: 'Profil' },
+    { label: t('form.contenu.contentTypes.PAGE'), value: 'Groupe' },
+  ];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -63,7 +69,7 @@ export const PlatformEntry: React.FC<PlatformEntryProps> = ({
             {index + 1}
           </span>
           <span className="text-sm font-semibold text-slate-800 dark:text-emc-primary">
-            Plateforme {index + 1}
+            {t('form.contenu.platformEntry', { index: index + 1 })}
           </span>
         </div>
         {showRemove && (
@@ -73,33 +79,33 @@ export const PlatformEntry: React.FC<PlatformEntryProps> = ({
             className="flex items-center gap-1.5 text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 px-2.5 py-1.5 rounded-lg transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Supprimer
+            {t('form.contenu.removePlatformBtn')}
           </button>
         )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Custom Platform Select */}
-        <FormField label="Plateforme" required error={errors.platform} htmlFor={`platform-${entry.id}`}>
+        <FormField label={t('form.contenu.platformsTitle')} required error={errors.platform} htmlFor={`platform-${entry.id}`}>
           <CustomSelect
             id={`platform-${entry.id}`}
             options={platformOptions}
             value={entry.platform}
             onChange={(val) => onChange(entry.id, 'platform', val)}
-            placeholder={loadingPlatforms ? 'Chargement...' : 'Sélectionnez une plateforme'}
+            placeholder={loadingPlatforms ? '...' : t('form.contenu.selectPlatform')}
             error={!!errors.platform}
             searchable
           />
         </FormField>
 
         {/* Custom Content Type Select */}
-        <FormField label="Type de contenu" required error={errors.contentType} htmlFor={`contentType-${entry.id}`}>
+        <FormField label={t('form.contenu.selectContentType')} required error={errors.contentType} htmlFor={`contentType-${entry.id}`}>
           <CustomSelect
             id={`contentType-${entry.id}`}
-            options={CONTENT_TYPES}
+            options={contentTypes}
             value={entry.contentType}
             onChange={(val) => onChange(entry.id, 'contentType', val)}
-            placeholder="Sélectionnez un type"
+            placeholder={t('form.contenu.selectContentType')}
             error={!!errors.contentType}
           />
         </FormField>
@@ -107,16 +113,15 @@ export const PlatformEntry: React.FC<PlatformEntryProps> = ({
 
       {/* Link URL */}
       <FormField
-        label="Lien vers le contenu"
+        label={t('form.contenu.contentUrlLabel')}
         required
         error={errors.link}
         htmlFor={`link-${entry.id}`}
-        helpText="Copiez et collez l'URL complète du contenu signalé (ex : https://www.facebook.com/post/...)."
       >
         <input
           id={`link-${entry.id}`}
           type="url"
-          placeholder="https://..."
+          placeholder={t('form.contenu.contentUrlPlaceholder')}
           value={entry.link}
           onChange={(e) => onChange(entry.id, 'link', e.target.value)}
           className={inputCls(!!errors.link)}
@@ -127,7 +132,7 @@ export const PlatformEntry: React.FC<PlatformEntryProps> = ({
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-slate-800 dark:text-emc-primary">
-            Captures d'écran <span className="text-rose-500">*</span> <span className="text-slate-400 font-normal">(min 1, max 2)</span>
+            {t('form.contenu.screenshotsLabel')} <span className="text-rose-500">*</span>
           </span>
           <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
             entry.screenshots.length >= 2
@@ -185,16 +190,14 @@ export const PlatformEntry: React.FC<PlatformEntryProps> = ({
             >
               <Upload className="w-4 h-4 text-blue-500" />
               <ImageIcon className="w-4 h-4 text-slate-400" />
-              {entry.screenshots.length === 0
-                ? 'Ajouter une capture d\'écran (obligatoire)'
-                : 'Ajouter une autre capture d\'écran'}
+              {t('form.contenu.addScreenshotBtn')}
             </label>
           </div>
         )}
 
         {entry.screenshots.length >= 2 && (
           <p className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1 font-medium">
-            <span>✓</span> Maximum atteint — 2 captures d'écran ajoutées.
+            <span>✓</span> {t('form.contenu.screenshotsMaxExceeded')}
           </p>
         )}
       </div>

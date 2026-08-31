@@ -24,24 +24,32 @@ const victimPublicSelect = {
   updatedAt: true,
 } as const;
 
-export function findAll(params?: {
-  search?: string;
-  status?: string;
-  priority?: string;
-  titulaire?: string;
-  cyberViolenceId?: number;
-  accompanimentType?: string;
-  issuer?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  page?: number;
-  limit?: number;
-}) {
+import { JwtPayload } from "../../types/jwt";
+import { getSignalementOrgFilter } from "../../utils/organizationScope";
+
+export function findAll(
+  params?: {
+    search?: string;
+    status?: string;
+    priority?: string;
+    titulaire?: string;
+    cyberViolenceId?: number;
+    accompanimentType?: string;
+    issuer?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    page?: number;
+    limit?: number;
+  },
+  currentUser?: JwtPayload,
+) {
   const page = Math.max(1, Number(params?.page ?? 1));
   const limit = Math.min(100, Math.max(1, Number(params?.limit ?? 20)));
   const search = params?.search?.trim();
 
-  const where: any = {};
+  const where: any = {
+    ...(currentUser ? getSignalementOrgFilter(currentUser) : {}),
+  };
 
   if (params?.status) {
     where.status = params.status;
@@ -84,17 +92,22 @@ export function findAll(params?: {
   }
 
   if (search) {
-    where.OR = [
-      { issuer: { contains: search } },
-      { description: { contains: search } },
-      { otherCyberViolence: { contains: search } },
-      { victim: { firstName: { contains: search } } },
-      { victim: { lastName: { contains: search } } },
-      { victim: { email: { contains: search } } },
-      { victim: { telephone: { contains: search } } },
-      { victim: { referenceNumber: { contains: search } } },
-      { cyberViolence: { name: { contains: search } } },
-      { accompaniments: { some: { type: { contains: search } } } },
+    where.AND = [
+      ...(where.AND || []),
+      {
+        OR: [
+          { issuer: { contains: search } },
+          { description: { contains: search } },
+          { otherCyberViolence: { contains: search } },
+          { victim: { firstName: { contains: search } } },
+          { victim: { lastName: { contains: search } } },
+          { victim: { email: { contains: search } } },
+          { victim: { telephone: { contains: search } } },
+          { victim: { referenceNumber: { contains: search } } },
+          { cyberViolence: { name: { contains: search } } },
+          { accompaniments: { some: { type: { contains: search } } } },
+        ],
+      },
     ];
   }
 
@@ -104,6 +117,20 @@ export function findAll(params?: {
       victim: { select: victimPublicSelect },
       cyberViolence: true,
       accompaniments: true,
+      assignedTo: {
+        include: {
+          organization: true,
+        },
+      },
+      validate: {
+        include: {
+          user: {
+            include: {
+              role: true,
+            },
+          },
+        },
+      },
       reportedItems: {
         include: {
           platform: true,
@@ -117,19 +144,24 @@ export function findAll(params?: {
   });
 }
 
-export function countAll(params?: {
-  search?: string;
-  status?: string;
-  priority?: string;
-  titulaire?: string;
-  cyberViolenceId?: number;
-  accompanimentType?: string;
-  issuer?: string;
-  dateFrom?: string;
-  dateTo?: string;
-}) {
+export function countAll(
+  params?: {
+    search?: string;
+    status?: string;
+    priority?: string;
+    titulaire?: string;
+    cyberViolenceId?: number;
+    accompanimentType?: string;
+    issuer?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  },
+  currentUser?: JwtPayload,
+) {
   const search = params?.search?.trim();
-  const where: any = {};
+  const where: any = {
+    ...(currentUser ? getSignalementOrgFilter(currentUser) : {}),
+  };
 
   if (params?.status) where.status = params.status;
   if (params?.priority) where.priority = params.priority;
@@ -158,26 +190,32 @@ export function countAll(params?: {
   }
 
   if (search) {
-    where.OR = [
-      { issuer: { contains: search } },
-      { description: { contains: search } },
-      { otherCyberViolence: { contains: search } },
-      { victim: { firstName: { contains: search } } },
-      { victim: { lastName: { contains: search } } },
-      { victim: { email: { contains: search } } },
-      { victim: { telephone: { contains: search } } },
-      { victim: { referenceNumber: { contains: search } } },
-      { cyberViolence: { name: { contains: search } } },
-      { accompaniments: { some: { type: { contains: search } } } },
+    where.AND = [
+      ...(where.AND || []),
+      {
+        OR: [
+          { issuer: { contains: search } },
+          { description: { contains: search } },
+          { otherCyberViolence: { contains: search } },
+          { victim: { firstName: { contains: search } } },
+          { victim: { lastName: { contains: search } } },
+          { victim: { email: { contains: search } } },
+          { victim: { telephone: { contains: search } } },
+          { victim: { referenceNumber: { contains: search } } },
+          { cyberViolence: { name: { contains: search } } },
+          { accompaniments: { some: { type: { contains: search } } } },
+        ],
+      },
     ];
   }
 
   return prisma.signalement.count({ where });
 }
 
-export function findById(id: number) {
-  return prisma.signalement.findUnique({
-    where: { id },
+export function findById(id: number, currentUser?: JwtPayload) {
+  const orgFilter = currentUser ? getSignalementOrgFilter(currentUser) : {};
+  return prisma.signalement.findFirst({
+    where: { id, ...orgFilter },
     include: {
       victim: {
         select: victimPublicSelect,

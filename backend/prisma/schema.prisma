@@ -71,7 +71,9 @@ enum AssignmentStatus {
   PENDING
   ASSIGNED
   IN_PROGRESS
+  ON_HOLD
   COMPLETED
+  CLOSED
   REJECTED
 }
 
@@ -123,7 +125,7 @@ enum RoleName {
 
 model Role {
   id          Int      @id @default(autoincrement())
-  name        RoleName @unique
+  name        String   @unique @db.VarChar(50)
   description String   @db.Text
   users       User[]
 }
@@ -230,6 +232,7 @@ model Organization {
   email       String   @unique @db.VarChar(100)
   website     String?  @db.VarChar(255)
   description String   @db.Text
+  image       String?  @db.VarChar(255)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -257,13 +260,20 @@ model Validate {
 }
 
 model AssignedTo {
-  status      AssignmentStatus
-  reason      String?          @db.Text
-  type          AccompanimentType
-  createdAt     DateTime         @default(now())
-  processedAt   DateTime?
-  closedAt      DateTime?
-  updatedAt     DateTime         @updatedAt
+  status                AssignmentStatus
+  reason                String?          @db.Text
+  type                  AccompanimentType
+  createdAt             DateTime         @default(now())
+  processedAt           DateTime?
+  closedAt              DateTime?
+  updatedAt             DateTime         @updatedAt
+
+  notes                 String?          @db.Text
+  reportActions         String?          @db.Text
+  reportObservations    String?          @db.Text
+  reportResult          String?          @db.Text
+  reportRecommendations String?          @db.Text
+  reportUpdatedAt       DateTime?
 
   signalementId Int
   signalement   Signalement @relation(fields: [signalementId], references: [id], onDelete: Cascade)

@@ -10,6 +10,7 @@ import {
   Lock,
   ShieldCheck,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export interface SignalementSuccessProps {
   referenceNumber: string;
@@ -24,6 +25,7 @@ export const SignalementSuccess: React.FC<SignalementSuccessProps> = ({
   password,
   onFinish,
 }) => {
+  const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [copiedField, setCopiedField] = useState<'reference' | 'password' | 'all' | null>(null);
   const [copyError, setCopyError] = useState<string | null>(null);
@@ -38,30 +40,27 @@ export const SignalementSuccess: React.FC<SignalementSuccessProps> = ({
       window.setTimeout(() => setCopiedField(null), 1800);
     } catch {
       setCopiedField(null);
-      setCopyError('Impossible de copier automatiquement. Veuillez copier manuellement.');
+      setCopyError('Impossible de copier automatiquement.');
     }
   };
 
   const handleCopyReference = () => copyText(referenceNumber, 'reference');
   const handleCopyPassword = () => copyText(password, 'password');
-  const handleCopyAll = () => copyText(`Numéro de référence: ${referenceNumber}\nMot de passe: ${password}`, 'all');
+  const handleCopyAll = () => copyText(`${t('form.success.refLabel')}: ${referenceNumber}\n${t('form.success.passwordLabel')}: ${password}`, 'all');
 
   const handleDownload = () => {
     const content = [
       'EMC HELPLINE',
       '========================',
       '',
-      'Informations de suivi de votre signalement',
-      '',
-      'Numéro de référence:',
+      `${t('form.success.refLabel')}:`,
       referenceNumber,
       '',
-      'Mot de passe:',
+      `${t('form.success.passwordLabel')}:`,
       password,
       '',
       'Important:',
-      'Conservez ces informations dans un endroit sûr.',
-      'Ne les partagez pas.',
+      t('form.success.passwordNotice'),
     ].join('\n');
 
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
@@ -101,10 +100,10 @@ export const SignalementSuccess: React.FC<SignalementSuccessProps> = ({
             </div>
 
             <h2 className="text-2xl font-bold text-slate-900 dark:text-emc-primary sm:text-3xl">
-              Votre signalement a été enregistré avec succès.
+              {t('form.success.title')}
             </h2>
             <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600 dark:text-emc-secondary">
-              Conservez précieusement les informations ci-dessous. Elles vous permettront d&apos;accéder au suivi de votre signalement.
+              {t('form.success.description')}
             </p>
           </div>
 
@@ -112,16 +111,15 @@ export const SignalementSuccess: React.FC<SignalementSuccessProps> = ({
             <div className="rounded-2xl border border-slate-200 dark:border-emc-border bg-slate-50/80 dark:bg-emc-elevated/40 p-4 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-emc-secondary">
-                  Numéro de référence
+                  {t('form.success.refLabel')}
                 </span>
                 <button
                   type="button"
                   onClick={handleCopyReference}
-                  aria-label="Copier le numéro de référence"
                   className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-600 dark:border-emc-border dark:bg-emc-surface dark:text-emc-secondary dark:hover:border-blue-700 dark:hover:text-blue-400"
                 >
                   {copiedField === 'reference' ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copiedField === 'reference' ? 'Copié' : 'Copier'}
+                  {copiedField === 'reference' ? t('form.success.copiedToast') : t('form.success.copyRefBtn')}
                 </button>
               </div>
 
@@ -133,26 +131,23 @@ export const SignalementSuccess: React.FC<SignalementSuccessProps> = ({
             <div className="rounded-2xl border border-slate-200 dark:border-emc-border bg-slate-50/80 dark:bg-emc-elevated/40 p-4 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-emc-secondary">
-                  Mot de passe
+                  {t('form.success.passwordLabel')}
                 </span>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setShowPassword((value) => !value)}
-                    aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
                     className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-600 dark:border-emc-border dark:bg-emc-surface dark:text-emc-secondary dark:hover:border-blue-700 dark:hover:text-blue-400"
                   >
                     {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    {showPassword ? 'Masquer' : 'Afficher'}
                   </button>
                   <button
                     type="button"
                     onClick={handleCopyPassword}
-                    aria-label="Copier le mot de passe"
                     className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-600 dark:border-emc-border dark:bg-emc-surface dark:text-emc-secondary dark:hover:border-blue-700 dark:hover:text-blue-400"
                   >
                     {copiedField === 'password' ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                    {copiedField === 'password' ? 'Copié' : 'Copier'}
+                    {copiedField === 'password' ? t('form.success.copiedToast') : t('form.success.copyPasswordBtn')}
                   </button>
                 </div>
               </div>
@@ -163,15 +158,15 @@ export const SignalementSuccess: React.FC<SignalementSuccessProps> = ({
             </div>
           </div>
 
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-left dark:border-amber-900/50 dark:bg-amber-950/20">
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-left rtl:text-right dark:border-amber-900/50 dark:bg-amber-950/20">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+              <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex-shrink-0">
                 <ShieldCheck className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Important</p>
+                <p className="text-sm font-bold text-amber-800 dark:text-amber-300">{t('common.important')}</p>
                 <p className="mt-1 text-sm leading-6 text-amber-700 dark:text-amber-200">
-                  Ces informations sont confidentielles. Ne les partagez avec personne et conservez-les dans un endroit sûr.
+                  {t('form.success.passwordNotice')}
                 </p>
               </div>
             </div>
@@ -185,19 +180,10 @@ export const SignalementSuccess: React.FC<SignalementSuccessProps> = ({
             <button
               type="button"
               onClick={handleCopyAll}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition-all hover:from-blue-700 hover:to-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-emc-surface"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-blue-500/20 transition-all hover:from-blue-700 hover:to-blue-600"
             >
-              {copiedField === 'all' ? <ClipboardCheck className="h-4 w-4" /> : <ClipboardCheck className="h-4 w-4" />}
-              {copiedField === 'all' ? 'Informations copiées' : 'Copier mes informations'}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDownload}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-emc-border dark:bg-emc-surface dark:text-emc-primary dark:hover:bg-emc-elevated"
-            >
-              <Download className="h-4 w-4" />
-              Télécharger mes informations
+              <ClipboardCheck className="h-4 w-4" />
+              {copiedField === 'all' ? t('form.success.copiedToast') : t('form.success.copyRefBtn')}
             </button>
           </div>
 
@@ -205,15 +191,15 @@ export const SignalementSuccess: React.FC<SignalementSuccessProps> = ({
             <button
               type="button"
               onClick={onFinish}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-900/40"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-900/40"
             >
-              Terminer
+              {t('form.success.finishBtn')}
             </button>
           </div>
 
           <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-emc-secondary">
             <Lock className="h-3.5 w-3.5 text-slate-400 dark:text-emc-muted-fg" />
-            <span>Accès réservé au suivi confidentiel de votre dossier.</span>
+            <span>{t('form.confidentialNotice')}</span>
           </div>
         </div>
       </div>

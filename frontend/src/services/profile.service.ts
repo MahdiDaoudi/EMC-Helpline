@@ -20,7 +20,20 @@ export const ProfileService = {
     return data;
   },
 
-  async updateProfile(dto: ProfileUpdateDto): Promise<User> {
+  async updateProfile(dto: ProfileUpdateDto, imageFile?: File | null): Promise<User> {
+    if (imageFile) {
+      const formData = new FormData();
+      if (dto.firstName) formData.append("firstName", dto.firstName);
+      if (dto.lastName) formData.append("lastName", dto.lastName);
+      if (dto.email) formData.append("email", dto.email);
+      formData.append("image", imageFile);
+
+      const { data } = await api.patch<User>("/profile", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return data;
+    }
+
     const { data } = await api.patch<User>("/profile", dto);
     return data;
   },

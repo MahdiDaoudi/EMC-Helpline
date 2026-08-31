@@ -2,22 +2,22 @@ import { Request, Response } from "express";
 import * as dashboardService from "./dashboard.service";
 
 export async function getDashboardStats(req: Request, res: Response) {
-  const result = await dashboardService.getDashboardStats();
+  const result = await dashboardService.getDashboardStats(req.user);
   res.json(result);
 }
 
 export async function getTimeSeriesData(req: Request, res: Response) {
   const range = typeof req.query.range === "string" ? req.query.range : "30d";
-  const result = await dashboardService.getTimeSeriesData(range);
+  const result = await dashboardService.getTimeSeriesData(range, req.user);
   res.json(result);
 }
 
 export async function getRecentSignalements(req: Request, res: Response) {
-  const result = await dashboardService.getRecentSignalements();
+  const result = await dashboardService.getRecentSignalements(req.user);
   res.json(result);
 }
 
 export async function getRecentActivity(req: Request, res: Response) {
-  const result = await dashboardService.getRecentActivity();
+  const result = await dashboardService.getRecentActivity(req.user);
   res.json(result);
 }

@@ -12,6 +12,11 @@ export const createAssignedToSchema = z.object({
 export const updateAssignedToSchema = z.object({
   status: z.enum(AssignmentStatus).optional(),
   reason: z.string().trim().min(5).optional(),
+  notes: z.string().nullable().optional(),
+  reportActions: z.string().nullable().optional(),
+  reportObservations: z.string().nullable().optional(),
+  reportResult: z.string().nullable().optional(),
+  reportRecommendations: z.string().nullable().optional(),
 });
 
 export type CreateAssignedToDto = z.infer<typeof createAssignedToSchema>;

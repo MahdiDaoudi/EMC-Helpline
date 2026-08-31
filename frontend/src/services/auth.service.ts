@@ -10,3 +10,8 @@ export async function loginRequest(email: string, password: string): Promise<Log
   const { data } = await api.post<LoginResponse>('/auth/login', { email, password });
   return data;
 }
+
+export async function resetPassword(email: string) : Promise<{message:string}>{
+  const {data} = await api.post<{message:string}>('/auth/reset-password',{email});
+  return data;
+}

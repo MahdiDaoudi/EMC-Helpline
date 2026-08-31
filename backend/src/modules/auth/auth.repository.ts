@@ -10,3 +10,15 @@ export async function findByEmail(email: string) {
         }
     })
 }
+
+
+export async function updatePassword(email: string, newHashedPassword: string) {
+    return await prisma.user.update({
+        where:{
+            email:email,
+        },
+        data:{
+            hashedPassword:newHashedPassword
+        }
+    })
+}

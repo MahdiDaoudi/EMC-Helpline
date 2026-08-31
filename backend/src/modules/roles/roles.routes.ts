@@ -2,17 +2,15 @@ import { Router } from "express";
 import * as roleController from "./roles.controller";
 import { validate } from "../../middleware/validate";
 import { createRoleSchema, updateRoleSchema } from "./roles.schema";
+import { authenticate } from "../../middleware/authenticate";
+import { authorize } from "../../middleware/authorize";
+import { RoleName } from "../../generated/prisma/enums";
+
 export const roleRouter = Router();
 
-/**
- * @openapi
- * /roles:
- *   get:
- *     summary: Get all roles
- *     responses:
- *       200:
- *         description: List of roles
- */
+roleRouter.use(authenticate());
+roleRouter.use(authorize(RoleName.SUPER_ADMIN));
+
 roleRouter.get("/", roleController.getRoles);
 roleRouter.get("/:id", roleController.getRole);
 roleRouter.post("/", validate(createRoleSchema), roleController.createRole);

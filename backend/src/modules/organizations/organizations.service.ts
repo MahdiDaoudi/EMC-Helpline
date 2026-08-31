@@ -6,13 +6,26 @@ import {
 import { prisma } from "../../config/prisma";
 import { ApiError } from "../../utils/ApiError";
 import { OrganizationCategory } from "../../generated/prisma/enums";
+import { createSignedUrl } from "../../services/supabaseStorage.service";
 
-export function getAllOrganizations() {
-  return organizationsRepository.findAll();
+async function enrichOrg<T extends { image?: string | null }>(org: T | null): Promise<T | null> {
+  if (!org || !org.image) return org;
+  if (org.image.startsWith("supabase://")) {
+    const rawPath = org.image.replace(/^supabase:\/\/[^/]+\//, "");
+    const signed = await createSignedUrl(rawPath);
+    if (signed) org.image = signed;
+  }
+  return org;
 }
 
-export function getOrganizationById(id: number) {
-  return organizationsRepository.findById(id);
+export async function getAllOrganizations() {
+  const orgs = await organizationsRepository.findAll();
+  return Promise.all(orgs.map((o) => enrichOrg(o)));
+}
+
+export async function getOrganizationById(id: number) {
+  const org = await organizationsRepository.findById(id);
+  return enrichOrg(org);
 }
 
 export async function addOrganization(data: CreateOrganizationDto) {

@@ -13,8 +13,22 @@ function categoryToAccompanimentType(category: OrganizationCategory): Accompanim
   }
 }
 
-export function getAllAssignedTos() {
-  return assignedTosRepository.findAll();
+export async function getAllAssignedTos(params?: assignedTosRepository.AssignedToQueryParams) {
+  const page = Math.max(1, Number(params?.page ?? 1));
+  const limit = Math.max(1, Number(params?.limit ?? 20));
+
+  const [items, total] = await Promise.all([
+    assignedTosRepository.findAll(params),
+    assignedTosRepository.countAll(params),
+  ]);
+
+  return {
+    items,
+    total,
+    page,
+    limit,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  };
 }
 
 export async function getAssignedToById(
@@ -35,7 +49,21 @@ export async function addAssignedTo(
   signalementId: number,
   organizationId: number,
   type?: AccompanimentType,
+  reason?: string,
 ) {
+  if (!reason || !reason.trim()) {
+    throw new ApiError(400, "Le motif de l'affectation est obligatoire.");
+  }
+
+  const signalement = await prisma.signalement.findUnique({
+    where: { id: signalementId },
+    select: { id: true },
+  });
+
+  if (!signalement) {
+    throw new ApiError(404, "Signalement introuvable.");
+  }
+
   const organization = await prisma.organization.findUnique({
     where: { id: organizationId },
     select: { id: true, category: true, name: true },
@@ -74,10 +102,11 @@ export async function addAssignedTo(
   }
 
   return assignedTosRepository.create(
-    AssignmentStatus.ASSIGNED,
+    AssignmentStatus.ON_HOLD,
     finalType,
     signalementId,
     organizationId,
+    reason.trim(),
   );
 }
 

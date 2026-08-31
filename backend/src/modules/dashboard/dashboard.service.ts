@@ -3,36 +3,98 @@ import { SignalementStatus, Priority } from "../../generated/prisma/enums";
 import { createSignedUrl } from "../../services/supabaseStorage.service";
 import * as platformsService from "../platforms/platforms.service";
 
+import { JwtPayload } from "../../types/jwt";
+import { getSignalementOrgFilter } from "../../utils/organizationScope";
+
 function formatDateKey(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-export async function getDashboardStats() {
+export async function getDashboardStats(user?: JwtPayload) {
+  if (user && user.role === "ORGANIZATION_USER") {
+    const orgId = user.organizationId ?? -1;
+
+    const [
+      totalSignalements,
+      assignedCount,
+      pendingCount,
+      inProgressCount,
+      onHoldCount,
+      completedCount,
+      closedCount,
+    ] = await Promise.all([
+      prisma.assignedTo.count({ where: { organizationId: orgId } }),
+      prisma.assignedTo.count({ where: { organizationId: orgId, status: "ASSIGNED" } }),
+      prisma.assignedTo.count({ where: { organizationId: orgId, status: "PENDING" } }),
+      prisma.assignedTo.count({ where: { organizationId: orgId, status: "IN_PROGRESS" } }),
+      prisma.assignedTo.count({ where: { organizationId: orgId, status: "ON_HOLD" } }),
+      prisma.assignedTo.count({ where: { organizationId: orgId, status: "COMPLETED" } }),
+      prisma.assignedTo.count({ where: { organizationId: orgId, status: "CLOSED" } }),
+    ]);
+
+    const receivedCount = assignedCount + pendingCount;
+    const resolvedCount = completedCount + closedCount;
+
+    return {
+      totalSignalements,
+      pendingSignalements: receivedCount,
+      inProgressSignalements: inProgressCount,
+      onHoldSignalements: onHoldCount,
+      resolvedSignalements: resolvedCount,
+      closedSignalements: closedCount,
+      highPriorityCases: 0,
+      totalOrganizations: 1,
+      totalVictims: 0,
+      topPlatforms: [],
+      trends: {
+        total: 10,
+        pending: 5,
+        resolved: 15,
+        highPriority: 0,
+      },
+    };
+  }
+
+  const orgFilter = user ? getSignalementOrgFilter(user) : {};
+
   const [
     totalSignalements,
     pendingSignalements,
-    resolvedSignalements,
+    inProgressSignalements,
+    validatedSignalements,
+    closedSignalements,
     highPriorityCases,
     totalOrganizations,
     totalVictims,
   ] = await Promise.all([
-    prisma.signalement.count(),
+    prisma.signalement.count({ where: orgFilter }),
     prisma.signalement.count({
       where: {
-        status: {
-          in: [SignalementStatus.PENDING, SignalementStatus.IN_PROGRESS],
-        },
+        ...orgFilter,
+        status: SignalementStatus.PENDING,
       },
     }),
     prisma.signalement.count({
       where: {
-        status: {
-          in: [SignalementStatus.VALIDATED, SignalementStatus.CLOSED],
-        },
+        ...orgFilter,
+        status: SignalementStatus.IN_PROGRESS,
       },
     }),
     prisma.signalement.count({
       where: {
+        ...orgFilter,
+        status: SignalementStatus.VALIDATED,
+      },
+    }),
+    prisma.signalement.count({
+      where: {
+        ...orgFilter,
+        status: SignalementStatus.CLOSED,
+      },
+    }),
+    prisma.signalement.count({
+      where: {
+        ...orgFilter,
         priority: Priority.URGENT,
       },
     }),
@@ -40,47 +102,56 @@ export async function getDashboardStats() {
     prisma.victim.count(),
   ]);
 
+  const resolvedSignalements = validatedSignalements + closedSignalements;
+  const pendingCount = pendingSignalements + inProgressSignalements;
+
   const total = 12.5;
-  const pending = Math.max(
+  const pendingTrend = Math.max(
     -99,
-    Number((((pendingSignalements - 120) / 120) * 100).toFixed(1)),
+    Number((((pendingCount - 120) / 120) * 100).toFixed(1)),
   );
-  const resolved = Math.max(
+  const resolvedTrend = Math.max(
     -99,
     Number((((resolvedSignalements - 900) / 900) * 100).toFixed(1)),
   );
-  const highPriority = Math.max(
+  const highPriorityTrend = Math.max(
     -99,
     Number((((highPriorityCases - 35) / 35) * 100).toFixed(1)),
   );
 
-  // Return the full list of platforms (front-end will render them all)
-  const topPlatforms = await getTopPlatforms(0);
+  const topPlatforms = await getTopPlatforms(0, user);
 
   return {
     totalSignalements,
     pendingSignalements,
+    inProgressSignalements,
     resolvedSignalements,
+    closedSignalements,
     highPriorityCases,
     totalOrganizations,
     totalVictims,
     topPlatforms,
     trends: {
       total,
-      pending,
-      resolved,
-      highPriority,
+      pending: pendingTrend,
+      resolved: resolvedTrend,
+      highPriority: highPriorityTrend,
     },
   };
 }
 
-export async function getTopPlatforms(limit = 5) {
-  // Fetch all platforms via the platforms service (ensures icons are resolved)
+export async function getTopPlatforms(limit = 5, user?: JwtPayload) {
   const platforms = await platformsService.getAllPlatforms();
+  const orgFilter = user ? getSignalementOrgFilter(user) : {};
 
-  // Fetch signalement counts by extracting platform IDs from ReportedItems
+  const reportedItemWhere: any = {};
+  if (user && user.role === "ORGANIZATION_USER") {
+    reportedItemWhere.signalement = orgFilter;
+  }
+
   const groupedCounts = await prisma.reportedItem.groupBy({
     by: ['platformId'],
+    where: reportedItemWhere,
     _count: {
       platformId: true,
     },
@@ -104,15 +175,86 @@ export async function getTopPlatforms(limit = 5) {
   return sorted;
 }
 
-export async function getTimeSeriesData(range = "30d") {
+export async function getTimeSeriesData(range = "30d", user?: JwtPayload) {
   const dayCount =
     range === "7d" ? 7 : range === "3m" ? 90 : range === "12m" ? 365 : 30;
   const startDate = new Date();
   startDate.setHours(0, 0, 0, 0);
   startDate.setDate(startDate.getDate() - (dayCount - 1));
 
+  if (user && user.role === "ORGANIZATION_USER") {
+    const orgId = user.organizationId ?? -1;
+    const assignments = await prisma.assignedTo.findMany({
+      where: {
+        organizationId: orgId,
+        createdAt: { gte: startDate },
+      },
+      select: {
+        createdAt: true,
+        status: true,
+      },
+    });
+
+    const grouped = new Map<
+      string,
+      {
+        total: number;
+        validated: number;
+        inProgress: number;
+        pending: number;
+        rejected: number;
+      }
+    >();
+
+    for (let i = 0; i < dayCount; i += 1) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      const key = formatDateKey(date);
+      grouped.set(key, {
+        total: 0,
+        validated: 0,
+        inProgress: 0,
+        pending: 0,
+        rejected: 0,
+      });
+    }
+
+    for (const item of assignments) {
+      const key = formatDateKey(new Date(item.createdAt));
+      const bucket = grouped.get(key);
+      if (!bucket) continue;
+
+      bucket.total += 1;
+
+      if (item.status === "COMPLETED" || item.status === "CLOSED") {
+        bucket.validated += 1;
+      } else if (item.status === "IN_PROGRESS") {
+        bucket.inProgress += 1;
+      } else if (item.status === "ASSIGNED" || item.status === "PENDING" || item.status === "ON_HOLD") {
+        bucket.pending += 1;
+      } else if (item.status === "REJECTED") {
+        bucket.rejected += 1;
+      }
+    }
+
+    return Array.from(grouped.entries()).map(([date, values]) => ({
+      date: new Date(`${date}T00:00:00Z`).toLocaleDateString("fr-FR", {
+        month: "short",
+        day: "numeric",
+      }),
+      total: values.total,
+      validated: values.validated,
+      inProgress: values.inProgress,
+      pending: values.pending,
+      rejected: values.rejected,
+    }));
+  }
+
+  const orgFilter = user ? getSignalementOrgFilter(user) : {};
+
   const signalements = await prisma.signalement.findMany({
     where: {
+      ...orgFilter,
       createdAt: {
         gte: startDate,
       },
@@ -178,8 +320,10 @@ export async function getTimeSeriesData(range = "30d") {
   }));
 }
 
-export async function getRecentSignalements() {
+export async function getRecentSignalements(user?: JwtPayload) {
+  const orgFilter = user ? getSignalementOrgFilter(user) : {};
   return prisma.signalement.findMany({
+    where: orgFilter,
     take: 5,
     orderBy: { createdAt: "desc" },
     include: {
@@ -199,8 +343,10 @@ export async function getRecentSignalements() {
   });
 }
 
-export async function getRecentActivity() {
+export async function getRecentActivity(user?: JwtPayload) {
+  const orgFilter = user ? getSignalementOrgFilter(user) : {};
   const signalements = await prisma.signalement.findMany({
+    where: orgFilter,
     take: 5,
     orderBy: { updatedAt: "desc" },
     include: {

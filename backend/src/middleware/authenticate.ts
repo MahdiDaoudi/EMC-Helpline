@@ -19,7 +19,6 @@ export function authenticate(){
         try {
             const payload: JwtPayload = jwt.verify(token,env.secretKey) as JwtPayload;
             req.user = payload
-            console.log("AUTH USER:", req.user);
             next()
         } catch {
             return res.status(401).json({

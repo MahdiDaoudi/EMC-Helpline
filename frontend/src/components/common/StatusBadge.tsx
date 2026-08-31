@@ -39,6 +39,24 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
           dot: 'bg-slate-400',
           label: 'Clôturé',
         };
+      case 'ASSIGNED':
+        return {
+          bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+          dot: 'bg-amber-500',
+          label: 'En attente',
+        };
+      case 'ON_HOLD':
+        return {
+          bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+          dot: 'bg-amber-500',
+          label: 'En attente',
+        };
+      case 'COMPLETED':
+        return {
+          bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+          dot: 'bg-emerald-500',
+          label: 'Traité',
+        };
       default:
         return {
           bg: 'bg-slate-500/10 text-slate-600 dark:text-emc-secondary border-slate-500/20',

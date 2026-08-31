@@ -6,7 +6,6 @@ import {
   FileText,
   AlertTriangle,
   CheckCircle2,
-  Users,
   TrendingUp,
   PlusCircle,
   Shield,
@@ -167,7 +166,9 @@ function formatNow(): string {
 // ─── Dashboard Page ──────────────────────────────────────────────────────────
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
-  const fullName = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Utilisateur';
+  const isOrgUser = user?.role?.name === 'ORGANIZATION_USER';
+  const orgName = user?.organization?.name || user?.organization?.nickname;
+  const displayName = isOrgUser && orgName ? orgName : user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Utilisateur';
 
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -203,7 +204,6 @@ export const DashboardPage: React.FC = () => {
     setRefreshing(false);
   };
 
-  const treatedCount = stats ? Math.max(0, stats.totalSignalements - stats.pendingSignalements) : 0;
   const topPlatforms = stats?.topPlatforms ?? [];
   const maxPlatformCount = topPlatforms.length > 0 ? Math.max(...topPlatforms.map((p) => p.count)) : 1;
 
@@ -236,10 +236,12 @@ export const DashboardPage: React.FC = () => {
                   {formatNow()}
                 </p>
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
-                  {getGreeting()} {fullName} 👋
+                  {getGreeting()}, {displayName} 
                 </h1>
                 <p className="text-white/70 text-sm mt-1">
-                  Vue d'ensemble de l'activité des signalements EMCS
+                  {isOrgUser
+                    ? "Vue d'ensemble de votre organisation"
+                    : "Vue d'ensemble de l'activité des signalements EMCS"}
                 </p>
               </div>
 
@@ -278,10 +280,13 @@ export const DashboardPage: React.FC = () => {
 
           {/* Quick Actions Strip */}
           <div className="flex items-center gap-2 flex-wrap mt-3">
-            <QuickActionBtn to="/signalements/nouveau" icon={PlusCircle} label="Nouveau signalement" primary />
-            <QuickActionBtn to="/signalements" icon={FileText} label="Tous les signalements" />
-            <QuickActionBtn to="/victims" icon={Shield} label="Registre victimes" />
-            <QuickActionBtn to="/validates" icon={CheckSquare} label="Validations" />
+            {!isOrgUser && (
+              <QuickActionBtn to="/dashboard/signalements/nouveau" icon={PlusCircle} label="Nouveau signalement" primary />
+            )}
+            <QuickActionBtn to="/dashboard/signalements" icon={FileText} label={isOrgUser ? "Dossiers de l'organisation" : "Tous les signalements"} primary={isOrgUser} />
+            {!isOrgUser && <QuickActionBtn to="/dashboard/victims" icon={Shield} label="Registre victimes" />}
+            {!isOrgUser && <QuickActionBtn to="/dashboard/assignments" icon={CheckSquare} label="Affectations" />}
+            {isOrgUser && <QuickActionBtn to="/dashboard/analyse" icon={TrendingUp} label="Analyse d'activité" />}
           </div>
         </div>
 
@@ -294,12 +299,12 @@ export const DashboardPage: React.FC = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="animate-slide-up animate-slide-up-delay-1">
               <KpiCard
-                label="Total des signalements"
+                label={isOrgUser ? "Dossiers reçus" : "Total des signalements"}
                 value={stats.totalSignalements}
                 trend={stats.trends?.total}
                 icon={FileText}
                 colorScheme="blue"
-                subtitle="Tous statuts confondus"
+                subtitle={isOrgUser ? "Cas assignés à votre organisation" : "Tous statuts confondus"}
               />
             </div>
             <div className="animate-slide-up animate-slide-up-delay-2">
@@ -309,27 +314,27 @@ export const DashboardPage: React.FC = () => {
                 trend={stats.trends?.pending}
                 icon={AlertTriangle}
                 colorScheme="amber"
-                subtitle="Nécessitent une action"
+                subtitle="Nécessitent une prise en charge"
               />
             </div>
             <div className="animate-slide-up animate-slide-up-delay-3">
               <KpiCard
-                label="Validés"
-                value={stats.resolvedSignalements}
-                trend={stats.trends?.resolved}
-                icon={CheckCircle2}
-                colorScheme="emerald"
-                subtitle="Traités avec succès"
+                label="En cours"
+                value={(stats as any).inProgressSignalements ?? Math.max(0, stats.totalSignalements - stats.pendingSignalements - stats.resolvedSignalements)}
+                trend={stats.trends?.pending}
+                icon={CheckSquare}
+                colorScheme="blue"
+                subtitle="Dossiers en traitement"
               />
             </div>
             <div className="animate-slide-up animate-slide-up-delay-4">
               <KpiCard
-                label="Haute priorité"
-                value={stats.highPriorityCases ?? treatedCount}
-                trend={stats.trends?.highPriority}
-                icon={Users}
-                colorScheme="rose"
-                subtitle="Cas urgents actifs"
+                label="Traités"
+                value={stats.resolvedSignalements}
+                trend={stats.trends?.resolved}
+                icon={CheckCircle2}
+                colorScheme="emerald"
+                subtitle="Validés ou clôturés"
               />
             </div>
           </div>

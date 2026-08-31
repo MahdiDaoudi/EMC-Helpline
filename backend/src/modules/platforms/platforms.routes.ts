@@ -9,17 +9,13 @@ import { upload } from "../../middleware/upload.middleware";
 
 const platformsRouter = Router();
 
+// Public GET routes accessible by forms and victim tracking
+platformsRouter.get("/", platformsController.getPlatforms);
+platformsRouter.get("/:id", platformsController.getPlatform);
+
+// Protected routes for managing platforms
 platformsRouter.use(authenticate());
-platformsRouter.get(
-  "/",
-  authorize(RoleName.ADMIN, RoleName.SUPER_ADMIN, RoleName.TECHNICIAN),
-  platformsController.getPlatforms,
-);
-platformsRouter.get(
-  "/:id",
-  authorize(RoleName.ADMIN, RoleName.SUPER_ADMIN, RoleName.TECHNICIAN),
-  platformsController.getPlatform,
-);
+
 platformsRouter.post(
   "/",
   authorize(RoleName.ADMIN, RoleName.SUPER_ADMIN),

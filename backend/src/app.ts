@@ -14,6 +14,8 @@ import { assignedTosRouter } from "./modules/assignedTos/assignedTos.routes";
 import { platformsRouter } from "./modules/platforms/platforms.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 import { profileRouter } from "./modules/profile/profile.routes";
+import { analyticsRouter } from "./modules/analytics/analytics.routes";
+import { victimTrackingRouter } from "./modules/victims/tracking.routes";
 
 export const app: Express = express();
 
@@ -24,6 +26,7 @@ app.use("/api/profile", profileRouter);
 app.use("/api/users", userRouter);
 app.use("/api/organizations", organizationsRouter);
 app.use("/api/cyberviolences", cyberViolencesRouter);
+app.use("/api/victims/tracking", victimTrackingRouter);
 app.use("/api/victims", victimsRouter);
 app.use("/api/platforms", platformsRouter);
 app.use("/api/signalements", signalementsRouter);
@@ -31,4 +34,5 @@ app.use("/api/platforms-reports", platformsReportsRouter);
 app.use("/api/assigned-tos", assignedTosRouter);
 app.use("/api/validates", validatesRouter);
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/analytics", analyticsRouter);
 app.use(errorHandler);

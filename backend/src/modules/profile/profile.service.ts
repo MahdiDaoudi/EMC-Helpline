@@ -3,15 +3,30 @@ import { prisma } from "../../config/prisma";
 import { ApiError } from "../../utils/ApiError";
 import * as profileRepository from "./profile.repository";
 import { ChangePasswordDto, ProfileUpdateDto } from "./profile.schema";
+import { createSignedUrl } from "../../services/supabaseStorage.service";
+
+export async function enrichUserProfile<T extends { profileImageUrl?: string | null }>(user: T | null): Promise<T | null> {
+  if (!user || !user.profileImageUrl) return user;
+  if (user.profileImageUrl.startsWith("supabase://")) {
+    const rawPath = user.profileImageUrl.replace(/^supabase:\/\/[^/]+\//, "");
+    const signed = await createSignedUrl(rawPath);
+    if (signed) user.profileImageUrl = signed;
+  }
+  return user;
+}
 
 export async function getProfile(userId: number) {
+  if (!userId) {
+    throw new ApiError(401, "Non autorisé.");
+  }
+
   const user = await profileRepository.findById(userId);
 
   if (!user) {
     throw new ApiError(404, "Profil introuvable.");
   }
 
-  return user;
+  return enrichUserProfile(user);
 }
 
 export async function updateProfile(userId: number, data: ProfileUpdateDto) {
@@ -31,7 +46,8 @@ export async function updateProfile(userId: number, data: ProfileUpdateDto) {
     }
   }
 
-  return profileRepository.update(userId, data);
+  const updated = await profileRepository.update(userId, data);
+  return enrichUserProfile(updated);
 }
 
 export async function changePassword(userId: number, data: ChangePasswordDto) {
@@ -41,7 +57,6 @@ export async function changePassword(userId: number, data: ChangePasswordDto) {
     throw new ApiError(404, "Profil introuvable.");
   }
 
-  // Fetch hashed password directly for verification (do not expose it in repo responses)
   const persisted = await prisma.user.findUnique({
     where: { id: userId },
     select: { hashedPassword: true },

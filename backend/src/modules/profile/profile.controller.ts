@@ -1,17 +1,29 @@
 import { Request, Response } from "express";
 import * as profileService from "./profile.service";
-import { ChangePasswordDto, ProfileUpdateDto } from "./profile.schema";
+import { ChangePasswordDto } from "./profile.schema";
+import { uploadProfileAvatar } from "../../services/supabaseStorage.service";
 
 export async function getProfile(req: Request, res: Response) {
   const result = await profileService.getProfile(req.user.userId);
   res.json(result);
 }
 
-export async function updateProfile(
-  req: Request<{}, {}, ProfileUpdateDto>,
-  res: Response,
-) {
-  const result = await profileService.updateProfile(req.user.userId, req.body);
+export async function updateProfile(req: Request, res: Response) {
+  // req.body is already validated by validate(profileUpdateSchema)
+  const payload: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    profileImageUrl?: string | null;
+  } = { ...req.body };
+
+  // If a new image file was uploaded, upload it and override profileImageUrl
+  if ((req as any).file) {
+    const uploadResult = await uploadProfileAvatar((req as any).file);
+    payload.profileImageUrl = uploadResult.persistedReference ?? uploadResult.imageUrl;
+  }
+
+  const result = await profileService.updateProfile(req.user.userId, payload);
   res.json(result);
 }
 

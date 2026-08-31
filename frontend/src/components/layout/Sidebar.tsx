@@ -3,15 +3,15 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   ShieldAlert,
   LayoutDashboard,
+  BarChart2,
   FileText,
   Users,
   Globe,
-  Share2,
-  CheckCircle2,
   Building2,
   UserCheck,
   Shield,
   Settings,
+  ShieldOff,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import icon_lightmode from '../../assets/icon-lightmode.png';
@@ -39,6 +39,8 @@ interface NavGroup {
   items: NavItem[];
 }
 
+import { useAuth } from '../../context/AuthContext';
+
 export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
   mobileOpen,
@@ -46,41 +48,71 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const location = useLocation();
   const { resolvedTheme } = useTheme();
+  const { user } = useAuth();
+  const role = user?.role?.name;
 
-  const navigationGroups: NavGroup[] = [
-    {
-      groupTitle: 'PRINCIPAL',
+  const getNavigationGroups = (): NavGroup[] => {
+    const isSuperAdmin = role === 'SUPER_ADMIN';
+    const isAdmin = role === 'ADMIN';
+    const isOrgUser = role === 'ORGANIZATION_USER';
+
+    const groups: NavGroup[] = [];
+
+    // 1. PRINCIPAL
+    const principalItems: NavItem[] = [
+      { title: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard },
+      { title: 'Analyse', href: '/dashboard/analyse', icon: BarChart2 },
+      { title: 'Signalements', href: '/dashboard/signalements', icon: FileText },
+    ];
+    if (!isOrgUser) {
+      principalItems.push({ title: 'Victimes', href: '/dashboard/victims', icon: Users });
+    }
+    groups.push({ groupTitle: 'PRINCIPAL', items: principalItems });
+
+    // 2. PLATEFORMES
+    if (!isOrgUser) {
+      groups.push({
+        groupTitle: 'PLATEFORMES',
+        items: [{ title: 'Plateformes', href: '/dashboard/platforms', icon: Globe }],
+      });
+    }
+
+    // 3. GESTION DES CAS
+    if (!isOrgUser) {
+      const gestionItems: NavItem[] = [
+        { title: 'Affectations', href: '/dashboard/assignments', icon: Building2 },
+        { title: 'Types de Cyberviolence', href: '/dashboard/cyberviolences', icon: ShieldOff },
+      ];
+      if (isSuperAdmin || isAdmin) {
+        gestionItems.push({ title: 'Organisations', href: '/dashboard/organizations', icon: Shield });
+      }
+      groups.push({ groupTitle: 'GESTION DES CAS', items: gestionItems });
+    }
+
+    // 4. ADMINISTRATION (SuperAdmin only)
+    if (isSuperAdmin) {
+      groups.push({
+        groupTitle: 'ADMINISTRATION',
+        items: [
+          { title: 'Utilisateurs', href: '/dashboard/users', icon: UserCheck },
+          { title: 'Rôles', href: '/dashboard/roles', icon: ShieldAlert },
+        ],
+      });
+    }
+
+    // 5. MON COMPTE (All roles)
+    groups.push({
+      groupTitle: 'MON COMPTE',
       items: [
-        { title: 'Tableau de bord', href: '/', icon: LayoutDashboard },
-        { title: 'Signalements', href: '/signalements', icon: FileText, badge: '142', badgeColor: 'bg-amber-500/20 text-amber-600 dark:text-amber-400' },
-        { title: 'victims', href: '/victims', icon: Users },
+        { title: 'Mon profil', href: '/dashboard/profile', icon: UserCheck },
+        { title: 'Paramètres', href: '/dashboard/settings', icon: Settings },
       ],
-    },
-    {
-      groupTitle: 'PLATEFORMES',
-      items: [
-        { title: 'Plateformes', href: '/platforms', icon: Globe },
-        { title: 'Rapports Plateformes', href: '/platform-reports', icon: Share2, badge: '8', badgeColor: 'bg-blue-500/20 text-blue-600 dark:text-blue-400' },
-      ],
-    },
-    {
-      groupTitle: 'GESTION DES CAS',
-      items: [
-        { title: 'Affectations', href: '/assignments', icon: Building2 },
-        { title: 'Validations', href: '/validates', icon: CheckCircle2, badge: '12', badgeColor: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' },
-        { title: 'Organisations', href: '/organizations', icon: Shield },
-      ],
-    },
-    {
-      groupTitle: 'ADMINISTRATION',
-      items: [
-        { title: 'Utilisateurs', href: '/users', icon: UserCheck },
-        { title: 'Rôles', href: '/roles', icon: ShieldAlert },
-        { title: 'Mon profil', href: '/profile', icon: UserCheck },
-        { title: 'Paramètres', href: '/settings', icon: Settings },
-      ],
-    },
-  ];
+    });
+
+    return groups;
+  };
+
+  const navigationGroups = getNavigationGroups();
 
   return (
     <>

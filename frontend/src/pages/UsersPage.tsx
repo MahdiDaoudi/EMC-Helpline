@@ -25,8 +25,38 @@ export const UsersPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [initialForm, setInitialForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+
+  const isDirty = useMemo(() => {
+    if (!showModal) return false;
+    if (editingId === null) {
+      return (
+        form.firstName.trim().length > 0 &&
+        form.lastName.trim().length > 0 &&
+        form.email.trim().length > 0 &&
+        form.roleId > 0
+      );
+    }
+    const hasFieldChanges =
+      form.firstName.trim() !== initialForm.firstName.trim() ||
+      form.lastName.trim() !== initialForm.lastName.trim() ||
+      form.email.trim() !== initialForm.email.trim() ||
+      form.roleId !== initialForm.roleId ||
+      form.organizationId !== initialForm.organizationId ||
+      form.isActive !== initialForm.isActive ||
+      form.isLocked !== initialForm.isLocked;
+
+    const hasValidRequiredFields =
+      form.firstName.trim().length > 0 &&
+      form.lastName.trim().length > 0 &&
+      form.email.trim().length > 0 &&
+      form.roleId > 0;
+
+    return hasFieldChanges && hasValidRequiredFields;
+  }, [showModal, editingId, form, initialForm]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -39,20 +69,18 @@ export const UsersPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     setError(null);
-
     try {
-      const [usersData, rolesData, orgsData] = await Promise.all([
+      const [u, r, o] = await Promise.all([
         UsersService.getUsers(),
         RolesService.getRoles(),
         OrganizationsService.getOrganizations(),
       ]);
-
-      setUsers(Array.isArray(usersData) ? usersData : []);
-      setRoles(Array.isArray(rolesData) ? rolesData : []);
-      setOrganizations(Array.isArray(orgsData) ? orgsData : []);
+      setUsers(Array.isArray(u) ? u : []);
+      setRoles(Array.isArray(r) ? r : []);
+      setOrganizations(Array.isArray(o) ? o : []);
     } catch (err) {
       console.error(err);
-      setError('Impossible de charger les données d’administration.');
+      setError('Impossible de charger les données.');
     } finally {
       setLoading(false);
     }
@@ -62,34 +90,69 @@ export const UsersPage: React.FC = () => {
     loadData();
   }, []);
 
+  const selectedRole = useMemo(() => {
+    return roles.find((r) => r.id === form.roleId);
+  }, [roles, form.roleId]);
+
+  const isOrgRoleSelected = selectedRole?.name === 'ORGANIZATION_USER';
+
   const openCreateModal = () => {
     setEditingId(null);
-    setForm({
+    const defaultRoleId = roles[0]?.id ?? 0;
+    const defaultRole = roles.find((r) => r.id === defaultRoleId);
+    const isOrg = defaultRole?.name === 'ORGANIZATION_USER';
+    const initial = {
       ...emptyForm,
-      roleId: roles[0]?.id ?? 0,
-      organizationId: organizations[0]?.id ?? 0,
-    });
+      roleId: defaultRoleId,
+      organizationId: isOrg ? (organizations[0]?.id ?? 0) : 0,
+    };
+    setForm(initial);
+    setInitialForm(initial);
+    setFieldErrors({});
     setShowModal(true);
   };
 
   const openEditModal = (user: User) => {
     setEditingId(user.id);
-    setForm({
+    const userRole = roles.find((r) => r.id === user.roleId);
+    const isOrg = userRole?.name === 'ORGANIZATION_USER';
+    const initial = {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
       roleId: user.roleId,
-      organizationId: user.organizationId ?? 0,
+      organizationId: isOrg ? (user.organizationId ?? 0) : 0,
       isActive: user.isActive,
       isLocked: user.isLocked,
-    });
+    };
+    setForm(initial);
+    setInitialForm(initial);
+    setFieldErrors({});
     setShowModal(true);
   };
 
+  const handleRoleChange = (newRoleId: number) => {
+    const targetRole = roles.find((r) => r.id === newRoleId);
+    const isOrg = targetRole?.name === 'ORGANIZATION_USER';
+    setForm((current) => ({
+      ...current,
+      roleId: newRoleId,
+      organizationId: isOrg ? current.organizationId : 0,
+    }));
+  };
+
   const handleSave = async () => {
-    // client-side validation
     setFieldErrors({});
-    const payload = { ...form, organizationId: form.organizationId || undefined };
+    if (isOrgRoleSelected && (!form.organizationId || form.organizationId <= 0)) {
+      setFieldErrors({ organizationId: 'Veuillez sélectionner une organisation.' });
+      return;
+    }
+
+    setSaving(true);
+    const payload = {
+      ...form,
+      organizationId: isOrgRoleSelected && form.organizationId > 0 ? form.organizationId : undefined,
+    };
     try {
       const { userCreateSchema } = await import('../validation/schemas');
       const result = userCreateSchema.safeParse(payload);
@@ -99,21 +162,23 @@ export const UsersPage: React.FC = () => {
           if (e.path && e.path[0]) fieldErrs[String(e.path[0])] = e.message;
         });
         setFieldErrors(fieldErrs);
+        setSaving(false);
         return;
       }
 
       if (editingId) {
         await UsersService.updateUser(editingId, payload);
       } else {
-        await UsersService.createUser(payload);
+        await UsersService.createUser(payload as any);
       }
 
       setShowModal(false);
-      setForm(emptyForm);
       await loadData();
     } catch (err: any) {
       console.error(err);
       setError(err?.response?.data?.message ?? 'Erreur lors de l’enregistrement.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -147,7 +212,7 @@ export const UsersPage: React.FC = () => {
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/20 transition hover:bg-blue-700"
         >
           <Plus className="h-4 w-4" />
-          Inviter un utilisateur
+          Ajouter un utilisateur
         </button>
       </div>
 
@@ -195,6 +260,7 @@ export const UsersPage: React.FC = () => {
                 <th className="px-4 py-3">Utilisateur</th>
                 <th className="px-4 py-3">Rôle</th>
                 <th className="px-4 py-3">Organisation</th>
+                <th className="px-4 py-3">Dernière connexion</th>
                 <th className="px-4 py-3">Statut</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
@@ -230,6 +296,18 @@ export const UsersPage: React.FC = () => {
 
                   <td className="px-4 py-3 text-sm font-medium text-slate-700 dark:text-emc-secondary">
                     {user.organization?.nickname ?? '—'}
+                  </td>
+
+                  <td className="px-4 py-3 text-slate-600 dark:text-emc-secondary font-mono text-[11px]">
+                    {user.lastLogin
+                      ? new Date(user.lastLogin).toLocaleDateString('fr-FR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : 'Jamais'}
                   </td>
 
                   <td className="px-4 py-3">
@@ -325,7 +403,7 @@ export const UsersPage: React.FC = () => {
                 Rôle
                 <select
                   value={form.roleId}
-                  onChange={(event) => setForm((current) => ({ ...current, roleId: Number(event.target.value) }))}
+                  onChange={(event) => handleRoleChange(Number(event.target.value))}
                   className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs outline-none focus:border-blue-500 dark:border-emc-border dark:bg-emc-elevated dark:text-emc-primary"
                 >
                   {roles.map((role) => (
@@ -337,21 +415,28 @@ export const UsersPage: React.FC = () => {
                 {fieldErrors.roleId && <div className="mt-1 text-xs text-red-600">{fieldErrors.roleId}</div>}
               </label>
 
-              <label className="text-[11px] font-medium text-slate-600 dark:text-emc-secondary">
-                Organisation
-                <select
-                  value={form.organizationId || 0}
-                  onChange={(event) => setForm((current) => ({ ...current, organizationId: Number(event.target.value) || 0 }))}
-                  className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs outline-none focus:border-blue-500 dark:border-emc-border dark:bg-emc-elevated dark:text-emc-primary"
-                >
-                  <option value={0}>Aucune</option>
-                  {organizations.map((org) => (
-                    <option key={org.id} value={org.id}>
-                      {org.nickname}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {isOrgRoleSelected && (
+                <label className="text-[11px] font-medium text-slate-600 dark:text-emc-secondary">
+                  Organisation
+                  <select
+                    value={form.organizationId || 0}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, organizationId: Number(event.target.value) || 0 }))
+                    }
+                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs outline-none focus:border-blue-500 dark:border-emc-border dark:bg-emc-elevated dark:text-emc-primary"
+                  >
+                    <option value={0}>Sélectionner une organisation...</option>
+                    {organizations.map((org) => (
+                      <option key={org.id} value={org.id}>
+                        {org.nickname} ({org.name})
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.organizationId && (
+                    <div className="mt-1 text-xs text-red-600">{fieldErrors.organizationId}</div>
+                  )}
+                </label>
+              )}
 
               <label className="flex items-center gap-2 text-[11px] font-medium text-slate-600 dark:text-emc-secondary">
                 <input
@@ -382,10 +467,12 @@ export const UsersPage: React.FC = () => {
                 Annuler
               </button>
               <button
+                type="button"
                 onClick={handleSave}
-                className="rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                disabled={!isDirty || saving}
+                className="rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {editingId ? 'Enregistrer' : 'Créer'}
+                {saving ? 'Enregistrement...' : editingId ? 'Enregistrer' : 'Créer'}
               </button>
             </div>
           </div>

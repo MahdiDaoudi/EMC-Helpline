@@ -1,4 +1,4 @@
-import { Priority, SignalementStatus } from "../../generated/prisma/enums";
+import { AccompanimentType, Priority, SignalementStatus } from "../../generated/prisma/enums";
 import { prisma } from "../../config/prisma";
 import {
   uploadScreenshotToSupabase,
@@ -27,71 +27,88 @@ function normalizeSignalementId(id: number | string) {
 
 async function withSignedScreenshotUrls<
   T extends {
+    id: number;
     reportedItems?: Array<{
       screenshots?: Array<{ imageUrl: string; storagePath?: string | null }>;
     }>;
   },
->(signalement: T | null): Promise<T | null> {
-  if (!signalement || !Array.isArray(signalement.reportedItems)) {
-    return signalement;
+>(signalement: T | null): Promise<(T & { reference: string }) | null> {
+  if (!signalement) {
+    return null;
   }
 
-  for (const item of signalement.reportedItems) {
-    if (!Array.isArray(item.screenshots)) continue;
+  if (Array.isArray(signalement.reportedItems)) {
+    for (const item of signalement.reportedItems) {
+      if (!Array.isArray(item.screenshots)) continue;
 
-    for (const screenshot of item.screenshots) {
-      if (!screenshot || !screenshot.storagePath) continue;
+      for (const screenshot of item.screenshots) {
+        if (!screenshot || !screenshot.storagePath) continue;
 
-      const signedUrl = await createSignedUrl(screenshot.storagePath);
-      if (signedUrl) {
-        screenshot.imageUrl = signedUrl;
+        const signedUrl = await createSignedUrl(screenshot.storagePath);
+        if (signedUrl) {
+          screenshot.imageUrl = signedUrl;
+        }
       }
     }
   }
 
-  return signalement;
+  return {
+    ...signalement,
+    reference: `SIG-${signalement.id}`,
+  };
 }
 
-export async function getAllSignalements(params?: {
-  search?: string;
-  status?: string;
-  priority?: string;
-  titulaire?: string;
-  cyberViolenceId?: number;
-  accompanimentType?: string;
-  issuer?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  page?: number;
-  limit?: number;
-}) {
+import { JwtPayload } from "../../types/jwt";
+
+export async function getAllSignalements(
+  params?: {
+    search?: string;
+    status?: string;
+    priority?: string;
+    titulaire?: string;
+    cyberViolenceId?: number;
+    accompanimentType?: string;
+    issuer?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    page?: number;
+    limit?: number;
+  },
+  currentUser?: JwtPayload,
+) {
   const page = Math.max(1, Number(params?.page ?? 1));
   const limit = Math.max(1, Number(params?.limit ?? 20));
   const [signalements, total] = await Promise.all([
-    signalementsRepository.findAll({
-      search: params?.search,
-      status: params?.status,
-      priority: params?.priority,
-      titulaire: params?.titulaire,
-      cyberViolenceId: params?.cyberViolenceId,
-      accompanimentType: params?.accompanimentType,
-      issuer: params?.issuer,
-      dateFrom: params?.dateFrom,
-      dateTo: params?.dateTo,
-      page,
-      limit,
-    }),
-    signalementsRepository.countAll({
-      search: params?.search,
-      status: params?.status,
-      priority: params?.priority,
-      titulaire: params?.titulaire,
-      cyberViolenceId: params?.cyberViolenceId,
-      accompanimentType: params?.accompanimentType,
-      issuer: params?.issuer,
-      dateFrom: params?.dateFrom,
-      dateTo: params?.dateTo,
-    }),
+    signalementsRepository.findAll(
+      {
+        search: params?.search,
+        status: params?.status,
+        priority: params?.priority,
+        titulaire: params?.titulaire,
+        cyberViolenceId: params?.cyberViolenceId,
+        accompanimentType: params?.accompanimentType,
+        issuer: params?.issuer,
+        dateFrom: params?.dateFrom,
+        dateTo: params?.dateTo,
+        page,
+        limit,
+      },
+      currentUser,
+    ),
+    signalementsRepository.countAll(
+      {
+        search: params?.search,
+        status: params?.status,
+        priority: params?.priority,
+        titulaire: params?.titulaire,
+        cyberViolenceId: params?.cyberViolenceId,
+        accompanimentType: params?.accompanimentType,
+        issuer: params?.issuer,
+        dateFrom: params?.dateFrom,
+        dateTo: params?.dateTo,
+      },
+      currentUser,
+    ),
   ]);
 
   const enriched = await Promise.all(
@@ -107,10 +124,32 @@ export async function getAllSignalements(params?: {
   };
 }
 
-export async function getSignalementById(id: number | string) {
+export async function getSignalementById(
+  id: number | string,
+  currentUser?: JwtPayload,
+) {
+  const normalizedId = normalizeSignalementId(id);
   const signalement = await signalementsRepository.findById(
-    normalizeSignalementId(id),
+    normalizedId,
+    currentUser,
   );
+
+  if (!signalement) {
+    throw new ApiError(404, "Signalement introuvable.");
+  }
+
+  if (currentUser && signalement.status === SignalementStatus.PENDING) {
+    await prisma.signalement.update({
+      where: { id: normalizedId },
+      data: {
+        status: SignalementStatus.IN_PROGRESS,
+        dateAnalyse: new Date(),
+      },
+    });
+    signalement.status = SignalementStatus.IN_PROGRESS;
+    signalement.dateAnalyse = new Date();
+  }
+
   return withSignedScreenshotUrls(signalement);
 }
 
@@ -122,20 +161,27 @@ async function resolveIssuerForUser(userId: number) {
       organization: {
         select: {
           nickname: true,
+          name: true,
         },
       },
     },
   });
 
-  if (user?.organizationId === null) {
-    return "EMC";
-  }
-
   if (user?.organization?.nickname) {
     return user.organization.nickname;
   }
 
+  if (user?.organization?.name) {
+    return user.organization.name;
+  }
+
   return "EMC";
+}
+
+function mapCategoryToAccompanimentType(category?: string | null): AccompanimentType {
+  if (category === "JURIDIQUE") return AccompanimentType.JUR;
+  if (category === "PSYCHIQUE") return AccompanimentType.PSY;
+  return AccompanimentType.SUP;
 }
 
 function normalizeTitulaire(value?: string): "MOI_MEME" | "AUTRE_PERSONNE" {
@@ -207,14 +253,6 @@ async function attachUploadedScreenshots(
         continue;
       }
 
-      console.log("[PERF] FILE:", {
-        fieldname: file.fieldname,
-        originalname: file.originalname,
-        mimetype: file.mimetype,
-        sizeBytes: file.size,
-        sizeMB: (file.size / 1024 / 1024).toFixed(2),
-      });
-
       const result = await uploadScreenshotToSupabase(
         file,
         signalementId,
@@ -270,12 +308,20 @@ async function persistScreenshotsByReportedItem(
   return signalementsRepository.findById(signalementId);
 }
 
+export async function addPublicSignalement(
+  data: CreateSignalementDto,
+  files: Express.Multer.File[] = [],
+) {
+  return addSignalement(data, undefined, files, "PUBLIC");
+}
+
 export async function addSignalement(
   data: CreateSignalementDto,
   userId?: number,
   files: Express.Multer.File[] = [],
+  forcedIssuer?: string,
 ) {
-  const issuer = userId ? await resolveIssuerForUser(userId) : "PUBLIC_FORM";
+  const issuer = forcedIssuer ?? (userId ? await resolveIssuerForUser(userId) : "PUBLIC");
   const titulaire = normalizeTitulaire(data.titulaire);
   const accompanimentTypes = normalizeAccompanimentTypes(
     data.accompanimentTypes,
@@ -366,11 +412,74 @@ export async function addSignalement(
   }
 }
 
-export function updateSignalement(
+export async function updateSignalement(
   id: number | string,
-  data: UpdateSignalementDto,
+  data: UpdateSignalementDto & { reason?: string },
+  userId?: number,
 ) {
-  return signalementsRepository.update(normalizeSignalementId(id), data);
+  const normalizedId = normalizeSignalementId(id);
+  const currentSignalement = await signalementsRepository.findById(normalizedId);
+
+  if (!currentSignalement) {
+    throw new ApiError(404, "Signalement not found.");
+  }
+
+  const { reason, ...updateData } = data;
+
+  if (updateData.status === SignalementStatus.REJECTED) {
+    if (!reason || !reason.trim()) {
+      throw new ApiError(400, "Le motif du rejet est obligatoire.");
+    }
+
+    let uid = userId;
+    if (!uid) {
+      const firstUser = await prisma.user.findFirst({ select: { id: true } });
+      uid = firstUser?.id ?? 1;
+    }
+
+    await prisma.validate.upsert({
+      where: {
+        type_signalementId: {
+          type: "ADMIN",
+          signalementId: normalizedId,
+        },
+      },
+      update: {
+        status: "REJECTED",
+        reason: reason.trim(),
+      },
+      create: {
+        signalementId: normalizedId,
+        userId: uid,
+        type: "ADMIN",
+        status: "REJECTED",
+        reason: reason.trim(),
+      },
+    });
+
+    if (!currentSignalement.dateApprobation) {
+      (updateData as any).dateApprobation = new Date();
+    }
+  } else if (updateData.status && (updateData.status as SignalementStatus) !== SignalementStatus.REJECTED) {
+    // If status is changed from REJECTED to any other status, delete existing rejection validate records
+    await prisma.validate.deleteMany({
+      where: {
+        signalementId: normalizedId,
+        status: "REJECTED",
+      },
+    });
+
+    if (updateData.status === SignalementStatus.VALIDATED && !currentSignalement.dateApprobation) {
+      (updateData as any).dateApprobation = new Date();
+    }
+  }
+
+  if (updateData.status && updateData.status !== SignalementStatus.PENDING && !currentSignalement.dateAnalyse) {
+    (updateData as any).dateAnalyse = new Date();
+  }
+
+  await signalementsRepository.update(normalizedId, updateData);
+  return getSignalementById(normalizedId);
 }
 
 export function deleteSignalement(id: number | string) {

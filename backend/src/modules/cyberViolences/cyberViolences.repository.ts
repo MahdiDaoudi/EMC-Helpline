@@ -2,7 +2,14 @@ import { prisma } from "../../config/prisma";
 import { CreateCyberViolenceDto, UpdateCyberViolenceDto } from "./cyberViolences.schema";
 
 export function findAll() {
-    return prisma.cyberViolence.findMany()
+    return prisma.cyberViolence.findMany({
+        include: {
+            _count: {
+                select: { signalement: true },
+            },
+        },
+        orderBy: { name: "asc" },
+    });
 }
 
 export function findById(id: number) {

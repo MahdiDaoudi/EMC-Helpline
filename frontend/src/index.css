@@ -15,6 +15,29 @@
   --color-emc-muted-fg: var(--text-muted);
   --color-emc-brand: var(--color-brand);
   --color-emc-brand-light: var(--color-brand-light);
+
+  --animate-soft-bounce: soft-bounce 2s ease-in-out infinite;
+  --animate-partners: partners 25s linear infinite;
+  @keyframes soft-bounce {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+
+  @keyframes partners {
+  from {
+    transform: translateX(-50%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
 }
 
 @layer base {
@@ -125,54 +148,117 @@
 }
 
 /* ─── KPI Card Color-Scheme Accent Borders ─────────────────────────────────── */
-.kpi-accent-blue   { border-left: 3px solid #3B82F6; }
-.kpi-accent-amber  { border-left: 3px solid #F59E0B; }
-.kpi-accent-emerald{ border-left: 3px solid #10B981; }
-.kpi-accent-rose   { border-left: 3px solid #F43F5E; }
-.kpi-accent-violet { border-left: 3px solid #8B5CF6; }
+.kpi-accent-blue {
+  border-left: 3px solid #3B82F6;
+}
+
+.kpi-accent-amber {
+  border-left: 3px solid #F59E0B;
+}
+
+.kpi-accent-emerald {
+  border-left: 3px solid #10B981;
+}
+
+.kpi-accent-rose {
+  border-left: 3px solid #F43F5E;
+}
+
+.kpi-accent-violet {
+  border-left: 3px solid #8B5CF6;
+}
 
 /* ─── KPI Card Hover Glow ───────────────────────────────────────────────────── */
-.kpi-glow-blue:hover   { box-shadow: 0 0 0 1px rgba(59,130,246,0.25), 0 8px 28px -6px rgba(59,130,246,0.18); }
-.kpi-glow-amber:hover  { box-shadow: 0 0 0 1px rgba(245,158,11,0.25), 0 8px 28px -6px rgba(245,158,11,0.18); }
-.kpi-glow-emerald:hover{ box-shadow: 0 0 0 1px rgba(16,185,129,0.25), 0 8px 28px -6px rgba(16,185,129,0.18); }
-.kpi-glow-rose:hover   { box-shadow: 0 0 0 1px rgba(244,63,94,0.25),  0 8px 28px -6px rgba(244,63,94,0.18); }
-.kpi-glow-violet:hover { box-shadow: 0 0 0 1px rgba(139,92,246,0.25), 0 8px 28px -6px rgba(139,92,246,0.18); }
+.kpi-glow-blue:hover {
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25), 0 8px 28px -6px rgba(59, 130, 246, 0.18);
+}
+
+.kpi-glow-amber:hover {
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25), 0 8px 28px -6px rgba(245, 158, 11, 0.18);
+}
+
+.kpi-glow-emerald:hover {
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25), 0 8px 28px -6px rgba(16, 185, 129, 0.18);
+}
+
+.kpi-glow-rose:hover {
+  box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.25), 0 8px 28px -6px rgba(244, 63, 94, 0.18);
+}
+
+.kpi-glow-violet:hover {
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.25), 0 8px 28px -6px rgba(139, 92, 246, 0.18);
+}
 
 /* ─── Dashboard Hero Gradient ───────────────────────────────────────────────── */
 .dashboard-hero-gradient {
   background: linear-gradient(135deg, #1665FF 0%, #6D28D9 100%);
 }
+
 .dashboard-hero-gradient-light {
-  background: linear-gradient(135deg, rgba(22,101,255,0.07) 0%, rgba(109,40,217,0.05) 100%);
+  background: linear-gradient(135deg, rgba(22, 101, 255, 0.07) 0%, rgba(109, 40, 217, 0.05) 100%);
 }
 
 /* ─── Animated Pulse for urgent badge ───────────────────────────────────────── */
 @keyframes pulse-urgent {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.6; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }
+
 .animate-pulse-urgent {
   animation: pulse-urgent 2s ease-in-out infinite;
 }
 
 /* ─── Slide-up fade-in for dashboard sections ──────────────────────────────── */
 @keyframes slide-up-fade {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 .animate-slide-up {
   animation: slide-up-fade 0.4s ease both;
 }
-.animate-slide-up-delay-1 { animation-delay: 0.05s; }
-.animate-slide-up-delay-2 { animation-delay: 0.10s; }
-.animate-slide-up-delay-3 { animation-delay: 0.15s; }
-.animate-slide-up-delay-4 { animation-delay: 0.20s; }
+
+.animate-slide-up-delay-1 {
+  animation-delay: 0.05s;
+}
+
+.animate-slide-up-delay-2 {
+  animation-delay: 0.10s;
+}
+
+.animate-slide-up-delay-3 {
+  animation-delay: 0.15s;
+}
+
+.animate-slide-up-delay-4 {
+  animation-delay: 0.20s;
+}
 
 /* ─── Shimmer Skeleton ──────────────────────────────────────────────────────── */
 @keyframes shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  0% {
+    background-position: -400px 0;
+  }
+
+  100% {
+    background-position: 400px 0;
+  }
 }
+
 .skeleton-shimmer {
   background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--bg-surface-hover) 50%, var(--bg-elevated) 75%);
   background-size: 800px 100%;

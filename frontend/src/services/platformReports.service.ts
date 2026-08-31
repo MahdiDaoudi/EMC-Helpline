@@ -8,6 +8,7 @@ export interface CreatePlatformReportDto {
   emailBody: string;
   emailTo: string;
   selectedScreenshotUrls?: string[];
+  selectedLinks?: string[];
 }
 
 export interface UpdatePlatformReportDto {

@@ -6,12 +6,35 @@ import {
     updateCyberViolenceSchema,
 } from "./cyberViolences.schema";
 
+import { authenticate } from "../../middleware/authenticate";
+import { authorize } from "../../middleware/authorize";
+import { RoleName } from "../../generated/prisma/enums";
+
 const cyberViolencesRouter = Router();
 
+// Public GET routes accessible by forms and victim tracking
 cyberViolencesRouter.get("/", cyberViolencesController.getCyberViolences);
 cyberViolencesRouter.get("/:id", cyberViolencesController.getCyberViolence);
-cyberViolencesRouter.post("/", validate(createCyberViolenceSchema), cyberViolencesController.createCyberViolence);
-cyberViolencesRouter.patch("/:id", validate(updateCyberViolenceSchema), cyberViolencesController.updateCyberViolence);
-cyberViolencesRouter.delete("/:id", cyberViolencesController.deleteCyberViolence);
+
+// Protected routes for managing cyberviolences
+cyberViolencesRouter.use(authenticate());
+
+cyberViolencesRouter.post(
+  "/",
+  authorize(RoleName.SUPER_ADMIN, RoleName.ADMIN),
+  validate(createCyberViolenceSchema),
+  cyberViolencesController.createCyberViolence,
+);
+cyberViolencesRouter.patch(
+  "/:id",
+  authorize(RoleName.SUPER_ADMIN, RoleName.ADMIN),
+  validate(updateCyberViolenceSchema),
+  cyberViolencesController.updateCyberViolence,
+);
+cyberViolencesRouter.delete(
+  "/:id",
+  authorize(RoleName.SUPER_ADMIN, RoleName.ADMIN),
+  cyberViolencesController.deleteCyberViolence,
+);
 
 export { cyberViolencesRouter };

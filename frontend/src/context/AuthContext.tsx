@@ -29,19 +29,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    try {
-      const token = localStorage.getItem(TOKEN_KEY);
-      const savedUser = localStorage.getItem(USER_KEY);
+    const initAuth = async () => {
+      try {
+        const token = localStorage.getItem(TOKEN_KEY);
+        const savedUser = localStorage.getItem(USER_KEY);
 
-      if (token && savedUser) {
-        setUser(JSON.parse(savedUser) as User);
+        if (token && savedUser) {
+          const parsed = JSON.parse(savedUser) as User;
+          setUser(parsed);
+
+          // Fetch fresh profile asynchronously to update signed avatar URL & latest info
+          try {
+            const { ProfileService } = await import('../services/profile.service');
+            const freshUser = await ProfileService.getProfile();
+            if (freshUser) {
+              setUser(freshUser);
+              localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
+            }
+          } catch (profileErr) {
+            console.warn('Failed to refresh profile on init:', profileErr);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to restore auth session:', err);
+        clearSession();
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      console.error('Failed to restore auth session:', err);
-      clearSession();
-    } finally {
-      setIsLoading(false);
-    }
+    };
+
+    void initAuth();
   }, [clearSession]);
 
   const login = async (email: string, password: string) => {

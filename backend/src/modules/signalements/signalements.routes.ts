@@ -10,11 +10,20 @@ import {
 
 const signalementsRouter = Router();
 
+// Public route (unauthenticated) for public signalement creation
+signalementsRouter.post(
+  "/public",
+  upload.any(),
+  validate(createSignalementSchema),
+  signalementsController.createPublicSignalement,
+);
+
+signalementsRouter.use(authenticate());
+
 signalementsRouter.get("/", signalementsController.getSignalements);
 signalementsRouter.get("/:id", signalementsController.getSignalement);
 signalementsRouter.post(
   "/",
-  authenticate(),
   upload.any(),
   validate(createSignalementSchema),
   signalementsController.createSignalement,

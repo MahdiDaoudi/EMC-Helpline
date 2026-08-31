@@ -7,33 +7,34 @@ import {
   updatePlatformReportSchema,
 } from "./platformReports.schema";
 
+import { authorize } from "../../middleware/authorize";
+import { RoleName } from "../../generated/prisma/enums";
+
 const platformsReportsRouter = Router();
+
+platformsReportsRouter.use(authenticate());
+platformsReportsRouter.use(authorize(RoleName.SUPER_ADMIN, RoleName.ADMIN, RoleName.TECHNICIAN));
 
 platformsReportsRouter.get(
   "/",
-  authenticate(),
   platformReportsController.getPlatformReports,
 );
 platformsReportsRouter.get(
   "/:signalementId/:platformId",
-  authenticate(),
   platformReportsController.getPlatformReport,
 );
 platformsReportsRouter.post(
   "/",
-  authenticate(),
   validate(createPlatformReportSchema),
   platformReportsController.createPlatformReport,
 );
 platformsReportsRouter.patch(
   "/:signalementId/:platformId",
-  authenticate(),
   validate(updatePlatformReportSchema),
   platformReportsController.updatePlatformReport,
 );
 platformsReportsRouter.delete(
   "/:signalementId/:platformId",
-  authenticate(),
   platformReportsController.deletePlatformReport,
 );
 

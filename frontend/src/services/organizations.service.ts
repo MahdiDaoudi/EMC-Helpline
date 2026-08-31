@@ -4,9 +4,11 @@ import type { Organization } from '../types';
 export interface CreateOrganizationDto {
   nickname: string;
   name: string;
+  category: 'JURIDIQUE' | 'PSYCHIQUE';
   email: string;
   website?: string;
   description: string;
+  image?: string | null;
 }
 
 export type UpdateOrganizationDto = Partial<CreateOrganizationDto>;
@@ -26,12 +28,38 @@ export const OrganizationsService = {
     return data;
   },
 
-  async createOrganization(dto: CreateOrganizationDto): Promise<Organization> {
+  async createOrganization(dto: CreateOrganizationDto, file?: File | null): Promise<Organization> {
+    if (file) {
+      const formData = new FormData();
+      Object.entries(dto).forEach(([key, val]) => {
+        if (val !== undefined && val !== null) {
+          formData.append(key, val as string);
+        }
+      });
+      formData.append('image', file);
+      const { data } = await api.post<Organization>('/organizations', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return data;
+    }
     const { data } = await api.post<Organization>('/organizations', dto);
     return data;
   },
 
-  async updateOrganization(id: number, dto: UpdateOrganizationDto): Promise<Organization> {
+  async updateOrganization(id: number, dto: UpdateOrganizationDto, file?: File | null): Promise<Organization> {
+    if (file) {
+      const formData = new FormData();
+      Object.entries(dto).forEach(([key, val]) => {
+        if (val !== undefined && val !== null) {
+          formData.append(key, val as string);
+        }
+      });
+      formData.append('image', file);
+      const { data } = await api.patch<Organization>(`/organizations/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return data;
+    }
     const { data } = await api.patch<Organization>(`/organizations/${id}`, dto);
     return data;
   },
